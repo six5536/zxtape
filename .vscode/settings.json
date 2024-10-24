@@ -1,0 +1,33 @@
+{
+  "editor.tabSize": 2,
+  "editor.rulers": [120],
+  "editor.wordWrapColumn": 120,
+  "editor.insertSpaces": true,
+  "editor.formatOnSave": true,
+  "files.eol": "\n",
+  "files.autoSave": "onFocusChange",
+  "files.trimTrailingWhitespace": true,
+  "files.associations": {
+    "*.tcc": "c",
+    "optional": "cpp",
+    "ostream": "cpp",
+    "system_error": "cpp",
+    "array": "cpp",
+    "functional": "cpp",
+    "tuple": "cpp",
+    "type_traits": "cpp",
+    "utility": "cpp",
+    "__config": "cpp",
+    "**/*.h": "cpp"
+  },
+  "cmake.useCMakePresets": "always",
+  "cmake.options.statusBarVisibility": "visible",
+  "cmake.pinnedCommands": [
+    "workbench.action.tasks.configureTaskRunner",
+    "workbench.action.tasks.runTask"
+  ],
+  "cmake.showOptionsMovedNotification": false,
+  "cmake.debugConfig": {
+    "MIMode": "lldb"
+  }
+}

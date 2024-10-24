@@ -1,0 +1,9 @@
+[submodule "modules/circle"]
+	path = modules/circle
+	url = git@github.com:six5536/circle.git
+	branch = 16-extend-networking-to-allow-receiving-mdns-multicast
+
+[submodule "modules/flashy"]
+	path = modules/flashy
+	url = git@github.com:toptensoftware/flashy.git
+	branch = v2

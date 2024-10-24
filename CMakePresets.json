@@ -1,0 +1,51 @@
+{
+  "version": 8,
+  "configurePresets": [
+    {
+      "name": "macos-base",
+      "hidden": true,
+      "displayName": "MacOS clang base Configuration",
+      "description": "Using compilers: C = /usr/bin/clang, CXX = /usr/bin/clang++",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+        "CMAKE_C_COMPILER": "/usr/bin/clang",
+        "CMAKE_CXX_COMPILER": "/usr/bin/clang++"
+      }
+    },
+    {
+      "name": "macos-debug",
+      "displayName": "macos-debug",
+      "description": "Using compilers: C = /usr/bin/clang, CXX = /usr/bin/clang++, debug build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "macos-release",
+      "displayName": "macos-release",
+      "description": "Using compilers: C = /usr/bin/clang, CXX = /usr/bin/clang++, release build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "macos-build-base",
+      "hidden": true
+    },
+    {
+      "name": "macos-debug",
+      "displayName": "MacOS Build Debug",
+      "inherits": "macos-build-base",
+      "configurePreset": "macos-debug"
+    },
+    {
+      "name": "macos-release",
+      "displayName": "MacOS Build Release",
+      "inherits": "macos-build-base",
+      "configurePreset": "macos-release"
+    }
+  ]
+}
