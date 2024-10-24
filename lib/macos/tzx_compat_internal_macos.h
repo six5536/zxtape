@@ -4,20 +4,13 @@
 #ifndef _tzx_compat_macos_internal_h_
 #define _tzx_compat_macos_internal_h_
 
-#include <stdlib.h>
-#include <string.h>
+#include "tzx_compat_macos.h"
 
 //
 // Required types (should be in Arduino compatability layer?)
 //
 
 // Lang definitions
-#ifdef __cplusplus
-#else
-typedef char bool;
-#define false 0
-#define true 1
-#endif
 typedef unsigned char byte;   // 8-bit
 typedef unsigned short word;  // 16-bit
 // typedef unsigned short uint16_t;      // 16-bit
@@ -26,23 +19,6 @@ typedef unsigned short word;  // 16-bit
 
 // Undefine as redefined
 #undef EOF
-
-// Timer
-typedef struct _TZX_TIMER {
-  void (*initialize)();
-  void (*stop)();
-  void (*setPeriod)(unsigned long period);
-} TZX_TIMER;
-
-// Files
-// typedef char FsBaseFile;
-typedef unsigned TZX_oflag_t;
-typedef struct _TZX_FILETYPE {
-  bool (*open)(struct _TZX_FILETYPE* dir, uint32_t index, TZX_oflag_t oflag);
-  void (*close)();
-  int (*read)(void* buf, unsigned long count);
-  bool (*seekSet)(uint64_t pos);
-} TZX_FILETYPE;
 
 #define TZX_PROGMEM  // nothing
 #define TZX_PSTR(x) x

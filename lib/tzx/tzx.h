@@ -8,7 +8,6 @@
 #ifdef __ZX_TAPE__
 
 #ifdef __ZX_TAPE_MACOS__
-#include "../macos/tzx_compat_macos.h"
 #include "../macos/tzx_compat_internal_macos.h"
 #endif
 

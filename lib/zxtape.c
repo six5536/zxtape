@@ -2,7 +2,11 @@
 
 // #include <zxtape/zxtape.h>
 
-static const char *EMPTY_STRING = "";
+// Maximum length for long filename support (ideally as large as possible to support very long filenames)
+#define ZX_TAPE_MAX_FILENAME_LEN 1023
+
+#define ZX_TAPE_CONTROL_UPDATE_MS 100       // 3 seconds (could be 0)
+#define ZX_TAPE_END_PLAYBACK_DELAY_MS 3000  // 3 seconds (could be longer by up to ZX_TAPE_CONTROL_UPDATE_MS)
 
 typedef struct _ZXTAPE_T {
   ZXTAPE_HANDLE_T handle;
@@ -24,13 +28,36 @@ typedef struct _INSTANCE_LIST_T {
   struct _INSTANCE_LIST_T *pNext;
 } INSTANCE_LIST_T;
 
+/* Imported global variables */
+bool TZX_PauseAtStart;  // Set to true to pause at start of file
+u8 TZX_currpct;         // Current percentage of file played (in file bytes, so not 100% accurate)
+
+/* Exported global variables */
+char TZX_fileName[ZX_TAPE_MAX_FILENAME_LEN + 1];  // Current filename
+uint16_t TZX_fileIndex;           // Index of current file, relative to current directory (generally set to 0)
+TZX_FILETYPE TZX_entry, TZX_dir;  // SD card current file (=entry) and current directory (=dir) objects
+size_t TZX_filesize;              // filesize used for dimensioning files
+TZX_TIMER TZX_Timer;              // Timer configure a timer to fire interrupts to control the output wave (call wave())
+bool TZX_pauseOn;                 // Control pause state
+
+/* Local global variables */
 static INSTANCE_LIST_T *g_pInstanceList = NULL;
 
 // External functions
 // extern zxtape_log(const char *pMessage);
 
+/* Forward function declarations */
+
+/* Exported functions */
+
 ZXTAPE_HANDLE_T *zxtape_create() {
   zxtape_log_info("Creating ZX TAPE instance");
+
+  // Only one instance is allowed
+  if (g_pInstanceList != NULL) {
+    zxtape_log_error("Only one ZX TAPE instance is allowed");
+    assert(g_pInstanceList == NULL);
+  }
 
   ZXTAPE_T *pInstance = (ZXTAPE_T *)malloc(sizeof(ZXTAPE_T));
   assert(pInstance != NULL);  // Ensure memory was allocated
@@ -43,7 +70,7 @@ ZXTAPE_HANDLE_T *zxtape_create() {
     pInstance->status.bPaused = false;
     pInstance->status.nTrack = 0;
     pInstance->status.nPosition = 0;
-    pInstance->status.pFilename = EMPTY_STRING;
+    pInstance->status.pFilename = "";
     pInstance->status.nTrackCount = 0;
     pInstance->status.nLength = 0;
 
@@ -74,6 +101,7 @@ ZXTAPE_HANDLE_T *zxtape_create() {
 
 void zxtape_destroy(ZXTAPE_HANDLE_T *pInstance) {
   zxtape_log_info("Destroying ZX TAPE instance");
+  assert(pInstance != NULL);
 
   // Check if the instance is in the list
   ZXTAPE_HANDLE_T *pFoundInstance = NULL;
@@ -105,9 +133,14 @@ void zxtape_destroy(ZXTAPE_HANDLE_T *pInstance) {
 void zxtape_init(ZXTAPE_HANDLE_T *pInstance) {
   //
   zxtape_log_info("Initializing ZX TAPE");
-}
+  assert(pInstance != NULL);
 
-void say_hello() {
-  //
-  printf("Hello, from zxtape!\n");
+  TZX_fileIndex = 0;
+  TZX_initializeFileType(&TZX_dir);
+  TZX_initializeFileType(&TZX_entry);
+  TZX_filesize = 0;
+  TZX_initializeTimer(&TZX_Timer);
+  TZX_pauseOn = false;
+  TZX_currpct = 0;
+  TZX_PauseAtStart = false;
 }

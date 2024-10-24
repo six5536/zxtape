@@ -24,7 +24,7 @@ typedef struct _ZXTAPE_HANDLE_T {
   u32 nInstanceId;
 } ZXTAPE_HANDLE_T;
 
-void say_hello();
+/* Exported functions */
 ZXTAPE_HANDLE_T *zxtape_create();
 void zxtape_destroy(ZXTAPE_HANDLE_T *pInstance);
 void zxtape_init(ZXTAPE_HANDLE_T *pInstance);
