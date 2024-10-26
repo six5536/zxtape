@@ -8,15 +8,17 @@
       "description": "Using compilers: C = /usr/bin/clang, CXX = /usr/bin/clang++",
       "binaryDir": "${sourceDir}/out/build/${presetName}",
       "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Darwin",
         "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
-        "CMAKE_C_COMPILER": "/usr/bin/clang",
-        "CMAKE_CXX_COMPILER": "/usr/bin/clang++"
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "ZXTAPE_TARGET": "macos"
       }
     },
     {
       "name": "macos-debug",
       "displayName": "macos-debug",
-      "description": "Using compilers: C = /usr/bin/clang, CXX = /usr/bin/clang++, debug build",
+      "description": "Using compilers: C = clang, CXX = clang++, debug build",
+      "inherits": "macos-base",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug"
       }
@@ -24,7 +26,40 @@
     {
       "name": "macos-release",
       "displayName": "macos-release",
-      "description": "Using compilers: C = /usr/bin/clang, CXX = /usr/bin/clang++, release build",
+      "inherits": "macos-base",
+      "description": "Using compilers: C = clang, CXX = clang++, release build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "circle-base",
+      "hidden": true,
+      "displayName": "Raspberry PI Circle base Configuration",
+      "description": "Using compilers: C = arm-none-eabi-gcc, CXX = arm-none-eabi-g++",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/toolchain-arm-none-eabi.cmake",
+        "CMAKE_INSTALL_PREFIX": "${sourceDir}/out/install/${presetName}",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "TOOLCHAIN_PREFIX": "${env:TOOLCHAIN_PREFIX}",
+        "ZXTAPE_TARGET": "circle"
+      }
+    },
+    {
+      "name": "circle-debug",
+      "displayName": "circle-debug",
+      "inherits": "circle-base",
+      "description": "Using compilers: C = arm-none-eabi-gcc, CXX = arm-none-eabi-g++, debug build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "circle-release",
+      "displayName": "circle-release",
+      "inherits": "circle-base",
+      "description": "Using compilers: C = arm-none-eabi-gcc, CXX = arm-none-eabi-g++, release build",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
@@ -37,15 +72,31 @@
     },
     {
       "name": "macos-debug",
-      "displayName": "MacOS Build Debug",
+      "displayName": "macos-debug",
       "inherits": "macos-build-base",
       "configurePreset": "macos-debug"
     },
     {
       "name": "macos-release",
-      "displayName": "MacOS Build Release",
+      "displayName": "macos-release",
       "inherits": "macos-build-base",
       "configurePreset": "macos-release"
+    },
+    {
+      "name": "circle-build-base",
+      "hidden": true
+    },
+    {
+      "name": "circle-debug",
+      "displayName": "circle-debug",
+      "inherits": "circle-build-base",
+      "configurePreset": "circle-debug"
+    },
+    {
+      "name": "circle-release",
+      "displayName": "circle-release",
+      "inherits": "circle-build-base",
+      "configurePreset": "circle-release"
     }
   ]
 }

@@ -13,10 +13,10 @@ static u64 g_nBufferSize = 0;  // Buffer size
 static u64 g_nSeekIndex = 0;   // Current file seek position
 
 /* Forward declarations */
-static bool open(TZX_FILETYPE *dir, uint32_t index, TZX_oflag_t oflag);
+static bool open(TZX_FILETYPE *dir, u32 index, TZX_oflag_t oflag);
 static void close();
 static int read(void *buf, unsigned long count);
-static bool seekSet(uint64_t pos);
+static bool seekSet(u64 pos);
 
 void zxtapeFileApiBuffer_initialize(TZX_FILETYPE *pFileType, const u8 *pBuffer, u64 nBufferSize) {
   pFileType->open = open;
@@ -44,7 +44,7 @@ void zxtapeFileApiBuffer_initialize(TZX_FILETYPE *pFileType, const u8 *pBuffer, 
   // TZX_filesize = nBufferSize;
 }
 
-static bool open(TZX_FILETYPE *dir, uint32_t index, TZX_oflag_t oflag) {
+static bool open(TZX_FILETYPE *dir, u32 index, TZX_oflag_t oflag) {
   zxtape_log_debug("open");
 
   g_nSeekIndex = 0;
@@ -77,7 +77,7 @@ static int read(void *buf, unsigned long count) {
   return count;
 }
 
-static bool seekSet(uint64_t pos) {
+static bool seekSet(u64 pos) {
   // zxtape_log_debug("seekSet(%lu)", pos);
 
   if (pos >= g_nBufferSize) return false;

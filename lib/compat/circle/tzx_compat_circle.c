@@ -1,12 +1,6 @@
-#include "tzx_compat_macos.h"
+#include "tzx_compat_circle.h"
 
-#include "tzx_compat_internal_macos.h"
-
-// Maximum length for long filename support (ideally as large as possible to support very long filenames)
-#define ZX_TAPE_MAX_FILENAME_LEN 1023
-
-#define ZX_TAPE_CONTROL_UPDATE_MS 100       // 3 seconds (could be 0)
-#define ZX_TAPE_END_PLAYBACK_DELAY_MS 3000  // 3 seconds (could be longer by up to ZX_TAPE_CONTROL_UPDATE_MS)
+#include "tzx_compat_internal_circle.h"
 
 /* External global variables */
 extern bool TZX_PauseAtStart;  // Set to true to pause at start of file

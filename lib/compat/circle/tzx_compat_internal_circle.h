@@ -1,21 +1,21 @@
 
 // Source: https://github.com/sadken/TZXDuino/blob/master/TZXDuino.h
 
-#ifndef _tzx_compat_macos_internal_h_
-#define _tzx_compat_macos_internal_h_
+#ifndef _tzx_compat_circle_internal_h_
+#define _tzx_compat_circle_internal_h_
 
-#include "tzx_compat_macos.h"
+#include "tzx_compat_circle.h"
 
 //
 // Required types (should be in Arduino compatability layer?)
 //
 
 // Lang definitions
-typedef unsigned char byte;   // 8-bit
-typedef unsigned short word;  // 16-bit
-// typedef unsigned short uint16_t;      // 16-bit
-// typedef unsigned int uint32_t;        // 32-bit
-// typedef unsigned long long uint64_t;  // 64-bit
+typedef unsigned char byte;           // 8-bit
+typedef unsigned short word;          // 16-bit
+typedef unsigned short uint16_t;      // 16-bit
+typedef unsigned int uint32_t;        // 32-bit
+typedef unsigned long long uint64_t;  // 64-bit
 
 // Undefine as redefined
 #undef EOF
@@ -82,4 +82,4 @@ extern bool TZX_pauseOn;                 // Control pause state
 extern byte TZX_currpct;       // Current percentage of file played (in file bytes, so not 100% accurate)
 extern bool TZX_PauseAtStart;  // Set to true to pause at start of file
 
-#endif  // _tzx_compat_macos_internal_h_
+#endif  // _tzx_compat_circle_internal_h_

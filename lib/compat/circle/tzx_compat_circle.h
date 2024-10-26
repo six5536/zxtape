@@ -1,9 +1,10 @@
 
 // Source: https://github.com/sadken/TZXDuino/blob/master/TZXDuino.h
 
-#ifndef _tzx_compat_macos_h_
-#define _tzx_compat_macos_h_
+#ifndef _tzx_compat_circle_h_
+#define _tzx_compat_circle_h_
 
+// TODO: Don't link stdlib, and only include what is allowed for Circle
 #include <assert.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -97,4 +98,4 @@ void TZXStop();
 #define zxtape_log_fatal(...) _zxtape_log("FATAL", __VA_ARGS__)
 void _zxtape_log(const char* pLevel, const char* pFormat, ...);
 
-#endif  // _tzx_compat_macos_h_
+#endif  // _tzx_compat_circle_h_
