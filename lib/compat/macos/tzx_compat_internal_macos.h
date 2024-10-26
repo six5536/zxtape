@@ -69,10 +69,6 @@ void TZX_Log(const char* pMessage, ...);  // Log a message
 
 /* API function prototypes */
 void TZXSetup();
-void TZXLoop();
-void TZXPlay();
-void TZXPause();
-void TZXStop();
 
 /* External Variables (to be implemented by consumer) */
 extern char TZX_fileName[];              // Current filename

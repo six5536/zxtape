@@ -7,9 +7,9 @@
 
 #ifdef __ZX_TAPE__
 
-#ifdef __ZX_TAPE_MACOS__
-#include "../macos/tzx_compat_internal_macos.h"
-#endif
+
+#include "../compat/zxtape_compat_internal.h"
+
 
 // Rename external symbols to avoid conflicts
 #define PROGMEM           TZX_PROGMEM
@@ -58,7 +58,7 @@
 #define UEFCarrierToneBlock     TZX_UEFCarrierToneBlock
 #define OricBitWrite            TZX_OricBitWrite
 #define OricDataBlock           TZX_OricDataBlock
-#define Log(pMessage, ...)      TZX_Log(pMessage, __VA_ARGS__)
+#define Log(pFormat, ...)       TZX_Log(pFormat, __VA_ARGS__)
 
 #define fileName                TZX_fileName
 #define fileIndex               TZX_fileIndex
