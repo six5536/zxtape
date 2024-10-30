@@ -2,11 +2,52 @@
 #ifndef _zxtape_h_
 #define _zxtape_h_
 
-// TODO - make dependent on platform
-#include "../lib/compat/zxtape_compat.h"
-
 #ifdef __cplusplus
 extern "C" {
+#endif
+
+#ifndef bool
+typedef unsigned char bool;
+#endif
+
+#ifndef false
+#define false 0
+#endif
+
+#ifndef true
+#define true 1
+#endif
+
+#ifndef u8
+typedef unsigned char u8;  // 8-bit unsigned integer
+#endif
+
+#ifndef u16
+typedef unsigned short u16;  // 16-bit unsigned integer
+#endif
+
+#ifndef u32
+typedef unsigned int u32;  // 32-bit unsigned integer
+#endif
+
+#ifndef u64
+typedef unsigned long long u64;  // 64-bit unsigned integer
+#endif
+
+#ifndef i8
+typedef char i8;  // 8-bit signed integer
+#endif
+
+#ifndef i16
+typedef short i16;  // 16-bit signed integer
+#endif
+
+#ifndef i32
+typedef int i32;  // 32-bit signed integer
+#endif
+
+#ifndef i64
+typedef long long i64;  // 64-bit signed integer
 #endif
 
 typedef struct _ZXTAPE_STATUS_T {
@@ -24,11 +65,6 @@ typedef struct _ZXTAPE_STATUS_T {
 typedef struct _ZXTAPE_HANDLE_T {
   u32 nInstanceId;
 } ZXTAPE_HANDLE_T;
-
-typedef struct _ZXTAPE_FILE_API_T {
-  TZX_FILETYPE *dir;  // Set 'dir' variable to this
-  void (*initialize)(TZX_FILETYPE *pFileType);
-} ZXTAPE_FILE_API_T;
 
 /* Exported functions */
 ZXTAPE_HANDLE_T *zxtape_create();

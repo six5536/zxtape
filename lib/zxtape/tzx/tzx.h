@@ -8,7 +8,7 @@
 #ifdef __ZX_TAPE__
 
 
-#include "../compat/zxtape_compat_internal.h"
+#include "../tzx_compat/tzx_compat_internal.h"
 
 
 // Rename external symbols to avoid conflicts
@@ -42,14 +42,14 @@
 #define memcmp_P(x, y, z)       TZX_memcmp(x, y, z)
 #define printtextF(...)         TZX_printtextF(__VA_ARGS__)
 
-#define delay(time)             TZX_delay(time)
+#define delay(time)             TZXCompat_delay(time)
 #define readfile(bytes, p)      TZX_readfile(bytes, p)
-#define noInterrupts            TZX_noInterrupts
-#define interrupts              TZX_interrupts
+#define noInterrupts            TZXCompat_noInterrupts
+#define interrupts              TZXCompat_interrupts
 #define pinMode(pin, mode)      TZX_pinMode(pin, mode)
-#define LowWrite                TZX_LowWrite
-#define HighWrite               TZX_HighWrite
-#define wave                    TZX_wave
+#define LowWrite                TZXCompat_setAudioLow
+#define HighWrite               TZXCompat_setAudioHigh
+#define wave                    TZXCompat_onTimer
 #define stopFile                TZX_stopFile
 #define lcdTime                 TZX_lcdTime
 #define Counter2                TZX_Counter2
@@ -58,7 +58,7 @@
 #define UEFCarrierToneBlock     TZX_UEFCarrierToneBlock
 #define OricBitWrite            TZX_OricBitWrite
 #define OricDataBlock           TZX_OricDataBlock
-#define Log(pFormat, ...)       TZX_Log(pFormat, __VA_ARGS__)
+#define Log(pFormat, ...)       TZXCompat_log(pFormat, __VA_ARGS__)
 
 #define fileName                TZX_fileName
 #define fileIndex               TZX_fileIndex

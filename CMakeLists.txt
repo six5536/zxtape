@@ -27,23 +27,26 @@ endif()
 # create library
 add_library(
   zxtape
-  lib/zxtape.c
-  lib/file/zxtape_file_api_dummy.c
-  lib/file/zxtape_file_api_buffer.c
-  lib/file/zxtape_file_api_file.c
-  lib/tzx/tzx.c
+  lib/zxtape/zxtape.c
+  lib/zxtape/file/zxtape_file_api_dummy.c
+  lib/zxtape/file/zxtape_file_api_buffer.c
+  lib/zxtape/file/zxtape_file_api_file.c
+  lib/zxtape/tzx_compat/tzx_compat.c
+  lib/zxtape/tzx/tzx.c
 )
 target_compile_definitions(zxtape PRIVATE __ZX_TAPE__)
 if(MACOS)
   add_library(
     tzx_compat
-    lib/compat/macos/tzx_compat_macos.c
+    lib/zxtape/tzx_compat_impl/macos/tzx_compat_impl_macos.c
+    lib/zxtape/tzx_compat_impl/macos/posix_timer_macos.c
+    lib/zxtape/tzx_compat_impl/macos/audio_macos.c
   )
 else(CIRCLE)
-  add_library(
-    tzx_compat
-    lib/compat/circle/tzx_compat_circle.c
-  )
+  # add_library(
+  #   tzx_compat
+  #   lib/zxtape/tzx_compat_impl/macos/tzx_compat_impl_circle.c
+  # )
 endif()
 
 # testing binaries
@@ -52,6 +55,24 @@ add_executable(zxtape_test test/zxtape.test.c)
 target_include_directories(zxtape_test PRIVATE include)
 target_link_libraries(zxtape_test PRIVATE zxtape)
 target_link_libraries(zxtape_test PRIVATE tzx_compat)
+if(MACOS)
+  # -framework CoreAudio
+  find_library(CORE_AUDIO CoreAudio)
+  if (NOT CORE_AUDIO)
+      message(FATAL_ERROR "CoreAudio not found")
+  endif()
+  message("CORE_AUDIO = ${CORE_AUDIO}")
+  target_link_libraries(zxtape_test PRIVATE ${CORE_AUDIO})
+
+  # -framework AudioToolbox
+  find_library(AUDIO_TOOLBOX AudioToolbox)
+  if (NOT AUDIO_TOOLBOX)
+      message(FATAL_ERROR "AudioToolbox not found")
+  endif()
+  message("AUDIO_TOOLBOX = ${AUDIO_TOOLBOX}")
+  target_link_libraries(zxtape_test PRIVATE ${AUDIO_TOOLBOX})
+endif()
+
 
 if(ZXTAPE_TARGET STREQUAL "macos")
   target_compile_definitions(zxtape_test PRIVATE __ZX_TAPE_MACOS__)

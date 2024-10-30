@@ -1,10 +1,12 @@
-#include "../include/zxtape.h"
+#include "../../include/zxtape.h"
 
 // #include <zxtape/zxtape.h>
 
+#include "../../include/tzx_compat_impl.h"
 #include "./file/zxtape_file_api_buffer.h"
 #include "./file/zxtape_file_api_dummy.h"
 #include "./file/zxtape_file_api_file.h"
+#include "./tzx_compat/tzx_compat.h"
 
 // Maximum length for long filename support (ideally as large as possible to support very long filenames)
 // #define ZX_TAPE_MAX_FILENAME_LEN 1023
@@ -168,13 +170,13 @@ void zxtape_destroy(ZXTAPE_HANDLE_T *pInstance) {
  */
 void zxtape_init(ZXTAPE_HANDLE_T *pInstance) {
   assert(pInstance != NULL);
-  // ZXTAPE_T *pZxTape = (ZXTAPE_T *)pInstance;
+  ZXTAPE_T *pZxTape = (ZXTAPE_T *)pInstance;
 
   //
   zxtape_log_info("Initializing ZX TAPE");
   assert(pInstance != NULL);
 
-  TZXCompat_Initialize(pInstance, NULL);
+  TZXCompatInternal_initialize(pInstance, &pZxTape->callbacks);
 }
 
 void zxtape_status(ZXTAPE_HANDLE_T *pInstance, ZXTAPE_STATUS_T *pStatus) {
@@ -402,13 +404,12 @@ static void loopPlayback(ZXTAPE_T *pZxTape) {
  * Handle control loop
  */
 static void loopControl(ZXTAPE_T *pZxTape) {
-  const unsigned lastTimerMs = TZXCompat_TimerMs();
+  const unsigned lastTimerMs = TZXCompat_timerGetMs();
   const unsigned elapsedMs = (lastTimerMs - pZxTape->nlastTimerMs);
 
   // Only run every 100ms
   if (elapsedMs < ZX_TAPE_CONTROL_UPDATE_MS) return;
-  //  zxtape_log_debug("loop_control: %d, m_bEndPlayback: %d, m_nEndPlaybackDelay: %d", elapsedMs, m_bEndPlayback,
-  //  m_nEndPlaybackDelay);
+  // zxtape_log_debug("loop_control: %d", elapsedMs);
 
   pZxTape->nlastTimerMs = lastTimerMs;
 
@@ -460,10 +461,10 @@ static void playFile(ZXTAPE_T *pZxTape) {
   TZX_currpct = 100;
 
   // Notify compatibility layer on start (so can enable audio output, etc)
-  TZXCompat_Start();
+  TZXCompat_start();
 
   // Initialise (reset) the output timer
-  TZXCompat_TimerInitialize();
+  TZXCompat_timerInitialize();
 
   TZXPlay();
   pZxTape->bRunning = true;
@@ -481,13 +482,13 @@ static void stopFile(ZXTAPE_T *pZxTape) {
   zxtape_log_debug("stopFile");
 
   // Notify compatibility layer on stop (so can disable audio output, etc)
-  TZXCompat_Stop();
+  TZXCompat_stop();
 
   if (pZxTape->bRunning) {
-    zxtape_log_debug("TZXCompat_TimerStop()");
+    zxtape_log_debug("TZXCompat_timerStop()");
 
     // Stop the output timer (only if it was initialised)
-    TZXCompat_TimerStop();
+    TZXCompat_timerStop();
   }
 
   // Stop tzx library

@@ -1,10 +1,8 @@
-#include "tzx_compat_circle.h"
-
-#include "tzx_compat_internal_circle.h"
+#include "tzx_compat_internal.h"
 
 /* External global variables */
-extern bool TZX_PauseAtStart;  // Set to true to pause at start of file
-extern byte TZX_currpct;       // Current percentage of file played (in file bytes, so not 100% accurate)
+extern bool TZX_PauseAtStart;      // Set to true to pause at start of file
+extern unsigned char TZX_currpct;  // Current percentage of file played (in file bytes, so not 100% accurate)
 
 /* Exported global variables */
 char TZX_fileName[ZX_TAPE_MAX_FILENAME_LEN + 1];  // Current filename
@@ -31,8 +29,8 @@ static void timer_setPeriod(unsigned long periodUs);
 // Exported API
 //
 
-void TZXCompat_Initialize(void *pControllerInstance, TZX_CALLBACKS_T *pCallbacks) {
-  TZX_Log("TZX_Initialize");
+void TZXCompatInternal_initialize(void *pControllerInstance, TZX_CALLBACKS_T *pCallbacks) {
+  TZXCompat_initialize();
 
   g_pControllerInstance = pControllerInstance;
   g_pCallbacks = pCallbacks;
@@ -47,112 +45,118 @@ void TZXCompat_Initialize(void *pControllerInstance, TZX_CALLBACKS_T *pCallbacks
   TZXSetup();
 }
 
-void TZXCompat_Start(void) {
-  // Set GPIO pin to output mode (ensuring it is LOW)
-  // m_GpioOutputPin.Write(LOW);
-  // m_GpioOutputPin.SetMode(GPIOModeOutput);
-}
+// void TZXCompat_start(void) {
+//   // Set GPIO pin to output mode (ensuring it is LOW)
+//   // m_GpioOutputPin.Write(LOW);
+//   // m_GpioOutputPin.SetMode(GPIOModeOutput);
+// }
 
-void TZXCompat_Stop(void) {
-  // Set GPIO pin to input mode
-  // m_GpioOutputPin.SetMode(GPIOModeInput);
-}
+// void TZXCompat_stop(void) {
+//   // Set GPIO pin to input mode
+//   // m_GpioOutputPin.SetMode(GPIOModeInput);
+// }
 
-void TZXCompat_TimerInitialize(void) {
-  // Initialise / reset the timer
+// void TZXCompat_timerInitialize(void) {
+//   // Initialise / reset the timer
 
-  // TODO: Implement
-}
+//   // TODO: Implement
+// }
 
-void TZXCompat_TimerStop(void) {
-  // Stop the timer
-  // TODO: Implement
-}
+// void TZXCompat_TimerStart(unsigned long periodUs) {
+//   // Start the timer
+//   // TODO: Implement
+//   // m_OutputTimer.Start(periodUs);
+// }
 
-unsigned int TZXCompat_TimerMs(void) {
-  // Get the current timer value in milliseconds
-  // TODO: Implement
-  return 0;
-}
+// void TZXCompat_timerStop(void) {
+//   // Stop the timer
+//   // TODO: Implement
+// }
+
+// unsigned int TZXCompat_timerGetMs(void) {
+//   // Get the current timer value in milliseconds
+//   // TODO: Implement
+//   return 0;
+// }
 
 //
 // File API
 //
 
-bool TZXCompat_fileOpen(TZX_FILETYPE *dir, u32 index, TZX_oflag_t oflag) {
-  // TODO: Implement
-  // char* pF = TZX_fileName; < Must be full path
+// bool TZXCompat_fileOpen(TZX_FILETYPE *dir, u32 index, TZX_oflag_t oflag) {
+//   // TODO: Implement
+//   // char* pF = TZX_fileName; < Must be full path
 
-  // Must set TZX_filesize
+//   // Must set TZX_filesize
 
-  return true;
-}
+//   return true;
+// }
 
-void TZXCompat_fileClose() {
-  // TODO: Implement
-}
+// void TZXCompat_fileClose() {
+//   // TODO: Implement
+// }
 
-int TZXCompat_fileRead(void *buf, unsigned long count) {
-  // TODO: Implement
-  return 0;
-}
+// int TZXCompat_fileRead(void *buf, unsigned long count) {
+//   // TODO: Implement
+//   return 0;
+// }
 
-bool TZXCompat_fileSeekSet(u64 pos) {
-  // TODO: Implement
+// bool TZXCompat_fileSeekSet(u64 pos) {
+//   // TODO: Implement
 
-  return true;
-}
+//   return true;
+// }
 
 //
 // ZXTape functions
 //
 
-void _zxtape_log(const char *pLevel, const char *pFormat, ...) {
-  va_list args;
+// void _zxtape_log(const char *pLevel, const char *pFormat, ...) {
+//   va_list args;
 
-  // Log a message
-  va_start(args, pFormat);
-  fprintf(stdout, "%s [%s] ", "ZxTape", pLevel);
-  vfprintf(stdout, pFormat, args);
-  fprintf(stdout, "\n");
-  va_end(args);
-}
+//   // Log a message
+//   va_start(args, pFormat);
+//   fprintf(stdout, "%s [%s] ", "ZxTape", pLevel);
+//   vfprintf(stdout, pFormat, args);
+//   fprintf(stdout, "\n");
+//   va_end(args);
+// }
 
 //
 // TZX API
 //
 
 // Log a message
-void TZX_Log(const char *pFormat, ...) {
-  va_list args;
+// void TZXCompat_log(const char *pFormat, ...) {
+//   va_list args;
 
-  // Log a message
-  va_start(args, pFormat);
-  fprintf(stdout, "%s [%s] ", "TZX", "DEBUG");
-  vfprintf(stdout, pFormat, args);
-  fprintf(stdout, "\n");
-  va_end(args);
-}
+//   // Log a message
+//   va_start(args, pFormat);
+//   fprintf(stdout, "%s [%s] ", "TZX", "DEBUG");
+//   vfprintf(stdout, pFormat, args);
+//   fprintf(stdout, "\n");
+//   va_end(args);
+// }
 
 // Set the GPIO output pin low
-void TZX_LowWrite() {
-  // TZX_Log("LowWrite");
-  // pZxTape->wave_set_low();
-  // m_GpioOutputPin.Write(LOW);
-  printf("_");
-}
+// void TZXCompat_setAudioLow() {
+//   // TZXCompat_log("LowWrite");
+//   // pZxTape->wave_set_low();
+//   // m_GpioOutputPin.Write(LOW);
+//   printf("_");
+// }
 
 // Set the GPIO output pin high
-void TZX_HighWrite() {
-  // TZX_Log("HighWrite");
-  // pZxTape->wave_set_high();
-  // m_GpioOutputPin.Write(HIGH);
-  printf("-");
-}
+// void TZXCompat_setAudioHigh() {
+//   // TZXCompat_log("HighWrite");
+//   // pZxTape->wave_set_high();
+//   // m_GpioOutputPin.Write(HIGH);
+//   printf("-");
+// }
 
 // End the current file playback (EOF or error)
 void TZX_stopFile() {
-  TZX_Log("stopFile");
+  zxtape_log_debug("stopFile");
 
   assert(g_pControllerInstance != NULL);
   assert(g_pCallbacks != NULL);
@@ -162,34 +166,34 @@ void TZX_stopFile() {
 
 // Called to display the playback time (at start)
 void TZX_lcdTime() {
-  // TZX_Log("lcdTime");
+  // TZXCompat_log("lcdTime");
 }
 
 // Called to display the playback percent (during playback)
 void TZX_Counter2() {
-  // TZX_Log("Counter2");
+  // TZXCompat_log("Counter2");
 }
 
-/**
- * Disable interrupts
- */
-void TZX_noInterrupts() {
-  //
-}
+// /**
+//  * Disable interrupts
+//  */
+// void TZXCompat_noInterrupts() {
+//   //
+// }
 
-/**
- * Re-enable interrupts
- */
-void TZX_interrupts() {
-  //
-}
+// /**
+//  * Re-enable interrupts
+//  */
+// void TZXCompat_interrupts() {
+//   //
+// }
 
-/**
- * Delay a number of milliseconds in a busy loop
- */
-void TZX_delay(unsigned long ms) {
-  //
-}
+// /**
+//  * Delay a number of milliseconds in a busy loop
+//  */
+// void TZXCompat_delay(unsigned long ms) {
+//   //
+// }
 
 /**
  * Change the mode of a GPIO pin
@@ -198,7 +202,7 @@ void TZX_pinMode(unsigned pin, unsigned mode) {
   //
 }
 
-int TZX_readfile(byte bytes, unsigned long p) {
+int TZX_readfile(unsigned char bytes, unsigned long p) {
   // Only relevant for ORIC tap file, so just do nothing
   return 0;
 }
@@ -265,7 +269,5 @@ static void timer_stop() {
 
 static void timer_setPeriod(unsigned long periodUs) {
   // zxtape_log_debug("timer_setPeriod(%lu)", periodUs);
-  // TODO
-  // pZxTape->wave_isr_set_period(periodUs);
-  // m_OutputTimer.Start(periodUs);
+  TZXCompat_timerStart(periodUs);
 }

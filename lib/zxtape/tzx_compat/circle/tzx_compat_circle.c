@@ -1,12 +1,6 @@
-#include "tzx_compat_macos.h"
+#include "tzx_compat_circle.h"
 
-#include "tzx_compat_internal_macos.h"
-
-// Maximum length for long filename support (ideally as large as possible to support very long filenames)
-#define ZX_TAPE_MAX_FILENAME_LEN 1023
-
-#define ZX_TAPE_CONTROL_UPDATE_MS 100       // 3 seconds (could be 0)
-#define ZX_TAPE_END_PLAYBACK_DELAY_MS 3000  // 3 seconds (could be longer by up to ZX_TAPE_CONTROL_UPDATE_MS)
+#include "tzx_compat_internal_circle.h"
 
 /* External global variables */
 extern bool TZX_PauseAtStart;  // Set to true to pause at start of file
@@ -37,8 +31,8 @@ static void timer_setPeriod(unsigned long periodUs);
 // Exported API
 //
 
-void TZXCompat_Initialize(void *pControllerInstance, TZX_CALLBACKS_T *pCallbacks) {
-  TZX_Log("TZX_Initialize");
+void TZXCompatInternal_initialize(void *pControllerInstance, TZX_CALLBACKS_T *pCallbacks) {
+  TZXCompat_log("TZX_Initialize");
 
   g_pControllerInstance = pControllerInstance;
   g_pCallbacks = pCallbacks;
@@ -53,29 +47,29 @@ void TZXCompat_Initialize(void *pControllerInstance, TZX_CALLBACKS_T *pCallbacks
   TZXSetup();
 }
 
-void TZXCompat_Start(void) {
+void TZXCompat_start(void) {
   // Set GPIO pin to output mode (ensuring it is LOW)
   // m_GpioOutputPin.Write(LOW);
   // m_GpioOutputPin.SetMode(GPIOModeOutput);
 }
 
-void TZXCompat_Stop(void) {
+void TZXCompat_stop(void) {
   // Set GPIO pin to input mode
   // m_GpioOutputPin.SetMode(GPIOModeInput);
 }
 
-void TZXCompat_TimerInitialize(void) {
+void TZXCompat_timerInitialize(void) {
   // Initialise / reset the timer
 
   // TODO: Implement
 }
 
-void TZXCompat_TimerStop(void) {
+void TZXCompat_timerStop(void) {
   // Stop the timer
   // TODO: Implement
 }
 
-unsigned int TZXCompat_TimerMs(void) {
+unsigned int TZXCompat_timerGetMs(void) {
   // Get the current timer value in milliseconds
   // TODO: Implement
   return 0;
@@ -113,52 +107,52 @@ bool TZXCompat_fileSeekSet(u64 pos) {
 // ZXTape functions
 //
 
-void _zxtape_log(const char *pLevel, const char *pFormat, ...) {
-  va_list args;
+// void _zxtape_log(const char *pLevel, const char *pFormat, ...) {
+//   va_list args;
 
-  // Log a message
-  va_start(args, pFormat);
-  fprintf(stdout, "%s [%s] ", "ZxTape", pLevel);
-  vfprintf(stdout, pFormat, args);
-  fprintf(stdout, "\n");
-  va_end(args);
-}
+//   // Log a message
+//   va_start(args, pFormat);
+//   fprintf(stdout, "%s [%s] ", "ZxTape", pLevel);
+//   vfprintf(stdout, pFormat, args);
+//   fprintf(stdout, "\n");
+//   va_end(args);
+// }
 
 //
 // TZX API
 //
 
 // Log a message
-void TZX_Log(const char *pFormat, ...) {
-  va_list args;
+// void TZXCompat_log(const char *pFormat, ...) {
+//   va_list args;
 
-  // Log a message
-  va_start(args, pFormat);
-  fprintf(stdout, "%s [%s] ", "TZX", "DEBUG");
-  vfprintf(stdout, pFormat, args);
-  fprintf(stdout, "\n");
-  va_end(args);
-}
+//   // Log a message
+//   va_start(args, pFormat);
+//   fprintf(stdout, "%s [%s] ", "TZX", "DEBUG");
+//   vfprintf(stdout, pFormat, args);
+//   fprintf(stdout, "\n");
+//   va_end(args);
+// }
 
 // Set the GPIO output pin low
-void TZX_LowWrite() {
-  // TZX_Log("LowWrite");
-  // pZxTape->wave_set_low();
-  // m_GpioOutputPin.Write(LOW);
-  printf("_");
-}
+// void TZXCompat_setAudioLow() {
+//   // TZXCompat_log("LowWrite");
+//   // pZxTape->wave_set_low();
+//   // m_GpioOutputPin.Write(LOW);
+//   printf("_");
+// }
 
 // Set the GPIO output pin high
-void TZX_HighWrite() {
-  // TZX_Log("HighWrite");
-  // pZxTape->wave_set_high();
-  // m_GpioOutputPin.Write(HIGH);
-  printf("-");
-}
+// void TZXCompat_setAudioHigh() {
+//   // TZXCompat_log("HighWrite");
+//   // pZxTape->wave_set_high();
+//   // m_GpioOutputPin.Write(HIGH);
+//   printf("-");
+// }
 
 // End the current file playback (EOF or error)
 void TZX_stopFile() {
-  TZX_Log("stopFile");
+  TZXCompat_log("stopFile");
 
   assert(g_pControllerInstance != NULL);
   assert(g_pCallbacks != NULL);
@@ -168,32 +162,32 @@ void TZX_stopFile() {
 
 // Called to display the playback time (at start)
 void TZX_lcdTime() {
-  // TZX_Log("lcdTime");
+  // TZXCompat_log("lcdTime");
 }
 
 // Called to display the playback percent (during playback)
 void TZX_Counter2() {
-  // TZX_Log("Counter2");
+  // TZXCompat_log("Counter2");
 }
 
 /**
  * Disable interrupts
  */
-void TZX_noInterrupts() {
+void TZXCompat_noInterrupts() {
   //
 }
 
 /**
  * Re-enable interrupts
  */
-void TZX_interrupts() {
+void TZXCompat_interrupts() {
   //
 }
 
 /**
  * Delay a number of milliseconds in a busy loop
  */
-void TZX_delay(unsigned long ms) {
+void TZXCompat_delay(unsigned long ms) {
   //
 }
 

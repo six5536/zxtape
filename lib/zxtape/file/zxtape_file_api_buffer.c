@@ -1,7 +1,7 @@
 
 #include "zxtape_file_api_buffer.h"
 
-#include "../compat/zxtape_compat.h"
+#include "../tzx_compat/tzx_compat.h"
 
 //
 // Simple Buffer File API
@@ -24,24 +24,13 @@ void zxtapeFileApiBuffer_initialize(TZX_FILETYPE *pFileType, const u8 *pBuffer, 
   pFileType->read = read;
   pFileType->seekSet = seekSet;
 
-  // Free any existing buffer
-  if (g_pBuffer) {
-    free(g_pBuffer);
-  }
-
-  // Allocate a new buffer
-  g_pBuffer = (u8 *)malloc(nBufferSize);
+  // Set the buffer pointer
+  g_pBuffer = pBuffer;
   assert(g_pBuffer != NULL);  // Ensure memory was allocated
-
-  // Copy data the buffer
-  memcpy((void *)g_pBuffer, pBuffer, nBufferSize);
 
   // Set the buffer size and seek index
   g_nBufferSize = nBufferSize;
   g_nSeekIndex = 0;
-
-  // TODO in zxtape
-  // TZX_filesize = nBufferSize;
 }
 
 static bool open(TZX_FILETYPE *dir, u32 index, TZX_oflag_t oflag) {
