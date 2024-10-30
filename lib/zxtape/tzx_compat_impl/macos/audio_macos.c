@@ -14,19 +14,23 @@
     if (err != noErr) goto bail; \
   } while (false)
 
-bool SettingsMute = false;
-bool SettingsSoundSync = false;
-bool SettingsSixteenBitSound = false;
-bool SettingsStereo = false;
-bool SettingsReverseStereo = false;
-uint32 SettingsSoundPlaybackRate = 32000;
-uint32 SettingsSoundInputRate = 32000;
+/* Imported global variables */
+extern uint32_t g_pinState;
 
-SInt32 macSoundVolume = 80;       // %
-uint32 macSoundBuffer_ms = 100;   // ms
-uint32 macSoundInterval_ms = 16;  // ms
-bool macSoundLagEnable = false;
-uint16 aueffect = 0;
+/* Local variables */
+static bool SettingsMute = false;
+static bool SettingsSoundSync = false;
+static bool SettingsSixteenBitSound = false;
+static bool SettingsStereo = false;
+static bool SettingsReverseStereo = false;
+static uint32 SettingsSoundPlaybackRate = 32000;
+static uint32 SettingsSoundInputRate = 32000;
+
+static SInt32 macSoundVolume = 80;       // %
+static uint32 macSoundBuffer_ms = 100;   // ms
+static uint32 macSoundInterval_ms = 16;  // ms
+static bool macSoundLagEnable = false;
+static uint16 aueffect = 0;
 
 static AUGraph agraph;
 static AUNode outNode;
@@ -236,14 +240,9 @@ static void DisconnectAudioUnits(void) {
   err = AUGraphClearConnections(agraph);
 }
 
-static bool hackMe = 0;
-
 static OSStatus MacAURenderCallBack(void *inRefCon, AudioUnitRenderActionFlags *ioActionFlags,
                                     const AudioTimeStamp *inTimeStamp, UInt32 inBusNumber, UInt32 inNumFrames,
                                     AudioBufferList *ioData) {
-  // HACk
-  hackMe = !hackMe;
-
   if (SettingsMute) {
     memset(ioData->mBuffers[0].mData, 0, ioData->mBuffers[0].mDataByteSize);
     *ioActionFlags |= kAudioUnitRenderAction_OutputIsSilence;
@@ -266,7 +265,7 @@ static OSStatus MacAURenderCallBack(void *inRefCon, AudioUnitRenderActionFlags *
     pthread_mutex_lock(&mutex);
     // TODO S9xMixSamples((uint8 *)ioData->mBuffers[0].mData, monosmp);
 
-    memset((uint8 *)ioData->mBuffers[0].mData, hackMe ? 0xFF : 0x00, monosmp);
+    memset((uint8 *)ioData->mBuffers[0].mData, g_pinState ? 0xFF : 0x00, monosmp);
 
     pthread_mutex_unlock(&mutex);
 

@@ -19,6 +19,9 @@
 
 #define AUDIO_THREAD_IDLE_SLEEP_NS 1000000  // 1ms
 
+/* Exported global variables */
+uint32_t g_pinState = 0;
+
 /* Forward declarations */
 void onTimer();
 static void createAudioThread(pthread_t thread);
@@ -114,11 +117,12 @@ void TZXCompat_setAudioLow() {
   // pZxTape->wave_set_low();
   // m_GpioOutputPin.Write(LOW);
 
-  int loops = g_nAudioTimerPeriodNs / 10000;
-  for (int i = 0; i < loops; i++) {
-    printf("_");
-  }
-  printf("%d\n", g_nAudioTimerPeriodNs);
+  // int loops = g_nAudioTimerPeriodNs / 10000;
+  // for (int i = 0; i < loops; i++) {
+  //   printf("_");
+  // }
+  // printf("%d\n", g_nAudioTimerPeriodNs);
+  g_pinState = 0;
 }
 
 // Set the GPIO output pin high
@@ -127,11 +131,12 @@ void TZXCompat_setAudioHigh() {
   // pZxTape->wave_set_high();
   // m_GpioOutputPin.Write(HIGH);
 
-  int loops = g_nAudioTimerPeriodNs / 10000;
-  for (int i = 0; i < loops; i++) {
-    printf("-");
-  }
-  printf("%d\n", g_nAudioTimerPeriodNs);
+  // int loops = g_nAudioTimerPeriodNs / 10000;
+  // for (int i = 0; i < loops; i++) {
+  //   printf("-");
+  // }
+  // printf("%d\n", g_nAudioTimerPeriodNs);
+  g_pinState = 1;
 }
 
 /**
