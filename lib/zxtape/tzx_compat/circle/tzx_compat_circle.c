@@ -69,7 +69,7 @@ void TZXCompat_timerStop(void) {
   // TODO: Implement
 }
 
-unsigned int TZXCompat_timerGetMs(void) {
+unsigned int TZXCompat_getTickMs(void) {
   // Get the current timer value in milliseconds
   // TODO: Implement
   return 0;

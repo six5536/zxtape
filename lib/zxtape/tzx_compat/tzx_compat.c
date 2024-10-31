@@ -30,7 +30,7 @@ static void timer_setPeriod(unsigned long periodUs);
 //
 
 void TZXCompatInternal_initialize(void *pControllerInstance, TZX_CALLBACKS_T *pCallbacks) {
-  TZXCompat_initialize();
+  TZXCompat_create();
 
   g_pControllerInstance = pControllerInstance;
   g_pCallbacks = pCallbacks;

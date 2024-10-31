@@ -404,7 +404,7 @@ static void loopPlayback(ZXTAPE_T *pZxTape) {
  * Handle control loop
  */
 static void loopControl(ZXTAPE_T *pZxTape) {
-  const unsigned lastTimerMs = TZXCompat_timerGetMs();
+  const unsigned lastTimerMs = TZXCompat_getTickMs();
   const unsigned elapsedMs = (lastTimerMs - pZxTape->nlastTimerMs);
 
   // Only run every 100ms
@@ -424,9 +424,11 @@ static void loopControl(ZXTAPE_T *pZxTape) {
       if (TZX_pauseOn) {
         // Unpause playback
         TZX_pauseOn = false;
+        TZXCompat_pause(false);
       } else {
         // Pause playback
         TZX_pauseOn = true;
+        TZXCompat_pause(true);
       }
     }
   }

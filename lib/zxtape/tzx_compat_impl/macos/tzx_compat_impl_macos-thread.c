@@ -40,7 +40,7 @@ static volatile uint64_t g_nAudioTimerPeriodNs = 0;
 // TZX Compat Implemetation
 //
 
-void TZXCompat_initialize(void) {
+void TZXCompat_create(void) {
   //
   g_bAudioTimerRunning = false;
   g_nAudioTimerPeriodNs = 0;
@@ -92,7 +92,7 @@ static void onTimer() {
   TZXCompat_onTimer();
 }
 
-unsigned int TZXCompat_timerGetMs(void) {
+unsigned int TZXCompat_getTickMs(void) {
   // Get the current timer value in milliseconds
   struct timespec spec;
 

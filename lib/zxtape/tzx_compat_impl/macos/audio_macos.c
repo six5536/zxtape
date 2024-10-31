@@ -1,11 +1,17 @@
-#include <AudioToolbox/AudioToolbox.h>
-#include <AudioUnit/AUComponent.h>
-// #include <Cocoa/Cocoa.h>
-#include <AudioUnit/AudioUnitCarbonView.h>
-#include <CoreAudio/CoreAudio.h>
-#include <pthread.h>
+/**
+ * MACOS audio implementation
+ *
+ * Code based on code from Snes9x:
+ * https://github.com/mcclure/snes9x-coop/blob/a4969faf1ed02356e45c65d766e3adc724417c56/macosx/mac-os.mm
+ */
 
 #include "audio_macos.h"
+
+#include <AudioToolbox/AudioToolbox.h>
+#include <AudioUnit/AUComponent.h>
+#include <CoreAudio/CoreAudio.h>
+#include <CoreServices/CoreServices.h>
+#include <pthread.h>
 
 // A macro to simplify error handling a bit.
 #define SuccessOrBail(error)     \
@@ -15,28 +21,25 @@
   } while (false)
 
 /* Imported global variables */
-extern uint32_t g_pinState;
+//
+
+/* Exported global variables */
+uint32 AudioPlaybackRate = 64000;  // Hz
+uint32 AudioIntervalMs = 128;      // ms
 
 /* Local variables */
-static bool SettingsMute = false;
-static bool SettingsSoundSync = false;
+static bool SettingsMute = true;
 static bool SettingsSixteenBitSound = false;
 static bool SettingsStereo = false;
-static bool SettingsReverseStereo = false;
-static uint32 SettingsSoundPlaybackRate = 32000;
-static uint32 SettingsSoundInputRate = 32000;
 
-static SInt32 macSoundVolume = 80;       // %
-static uint32 macSoundBuffer_ms = 100;   // ms
-static uint32 macSoundInterval_ms = 16;  // ms
-static bool macSoundLagEnable = false;
-static uint16 aueffect = 0;
+static SInt32 macSoundVolume = 80;  // %
 
 static AUGraph agraph;
 static AUNode outNode;
 static AudioUnit outAU;
 static pthread_mutex_t mutex;
 static UInt32 outStoredFrames, devStoredFrames;
+static AudioBufferCallback audioBufferCallback;
 
 /* Forward declarations */
 static void ConnectAudioUnits(void);
@@ -53,8 +56,10 @@ static void MacFinalizeSamplesCallBack(void *);
 static OSStatus MacAURenderCallBack(void *, AudioUnitRenderActionFlags *, const AudioTimeStamp *, UInt32, UInt32,
                                     AudioBufferList *);
 
-void InitMacSound() {
+void InitMacSound(AudioBufferCallback callback) {
   OSStatus err;
+
+  audioBufferCallback = callback;
 
   AudioComponentDescription outdesc;
 
@@ -137,6 +142,26 @@ void DeinitMacSound(void) {
   err = DisposeAUGraph(agraph);
 }
 
+// uint32 GetVolume(void) {
+//   //
+//   return AudioPlaybackRate;
+// }
+
+// void SetVolume(uint32 volume) {
+//   macSoundVolume = volume;
+//   SetAudioUnitVolume();
+// }
+
+bool GetMute(void) {
+  //
+  return SettingsMute;
+}
+
+void SetMute(bool mute) {
+  //
+  SettingsMute = mute;
+}
+
 static void SetAudioUnitSoundFormat(void) {
   OSStatus err;
   AudioStreamBasicDescription format;
@@ -149,7 +174,7 @@ static void SetAudioUnitSoundFormat(void) {
 
   memset(&format, 0, sizeof(format));
 
-  format.mSampleRate = (Float64)SettingsSoundPlaybackRate;
+  format.mSampleRate = (Float64)AudioPlaybackRate;
   format.mFormatID = kAudioFormatLinearPCM;
   format.mFormatFlags = endian | (SettingsSixteenBitSound ? kLinearPCMFormatFlagIsSignedInteger : 0);
   format.mBytesPerPacket = 2 * (SettingsSixteenBitSound ? 2 : 1);
@@ -205,7 +230,7 @@ static void ChangeBufferFrameSize(void) {
 
   size = sizeof(UInt32);
 
-  if (macSoundInterval_ms == 0) {
+  if (AudioIntervalMs == 0) {
     err = AudioObjectSetPropertyData(device, &address, 0, NULL, size, &devStoredFrames);
 
     err = AudioUnitSetProperty(outAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0,
@@ -213,14 +238,14 @@ static void ChangeBufferFrameSize(void) {
 
     printf("Interval: system, Frames: %d/%d\n", (int)devStoredFrames, (int)outStoredFrames);
   } else {
-    numframes = macSoundInterval_ms * SettingsSoundPlaybackRate / 1000;
+    numframes = AudioIntervalMs * AudioPlaybackRate / 1000;
 
     err = AudioObjectSetPropertyData(device, &address, 0, NULL, size, &numframes);
 
     err = AudioUnitSetProperty(outAU, kAudioUnitProperty_MaximumFramesPerSlice, kAudioUnitScope_Global, 0, &numframes,
                                size);
 
-    printf("Interval: %dms, Frames: %d\n", (int)macSoundInterval_ms, (int)numframes);
+    printf("Interval: %dms, Frames: %d\n", (int)AudioIntervalMs, (int)numframes);
   }
 }
 
@@ -254,6 +279,7 @@ static OSStatus MacAURenderCallBack(void *inRefCon, AudioUnitRenderActionFlags *
 
     pthread_mutex_lock(&mutex);
     // TODO S9xMixSamples((uint8 *)ioData->mBuffers[0].mData, samples);
+    audioBufferCallback((void *)ioData->mBuffers[0].mData, samples);
     pthread_mutex_unlock(&mutex);
   } else  // Manually map L to R
   {
@@ -264,8 +290,7 @@ static OSStatus MacAURenderCallBack(void *inRefCon, AudioUnitRenderActionFlags *
 
     pthread_mutex_lock(&mutex);
     // TODO S9xMixSamples((uint8 *)ioData->mBuffers[0].mData, monosmp);
-
-    memset((uint8 *)ioData->mBuffers[0].mData, g_pinState ? 0xFF : 0x00, monosmp);
+    audioBufferCallback((void *)ioData->mBuffers[0].mData, monosmp);
 
     pthread_mutex_unlock(&mutex);
 

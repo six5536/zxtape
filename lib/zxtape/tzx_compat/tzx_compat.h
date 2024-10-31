@@ -97,7 +97,8 @@ extern bool TZX_PauseAtStart;      // Set to true to pause at start of file
 extern unsigned char TZX_currpct;  // Current percentage of file played (in file bytes, so not 100% accurate)
 
 /* External functions */
-extern void TZXCompat_initialize(void);
+extern void TZXCompat_create(void);
+extern void TZXCompat_destroy(void);
 extern void TZXCompat_timerStart(unsigned long periodUs);
 extern void TZXCompat_delay(unsigned long time);
 extern void TZXCompat_noInterrupts();                  // Disable interrupts

@@ -11,19 +11,21 @@
 #endif  // __ZX_TAPE_CIRCLE__
 
 // TZX Compat APIs
-void TZXCompat_initialize(void);
+void TZXCompat_create(void);
+void TZXCompat_destroy(void);
 void TZXCompat_start(void);
 void TZXCompat_stop(void);
+void TZXCompat_pause(bool bPause);
 
 void TZXCompat_timerInitialize(void);
 void TZXCompat_timerStart(unsigned long periodUs);
 void TZXCompat_timerStop(void);
-unsigned int TZXCompat_timerGetMs(void);
 extern void TZXCompat_onTimer(void);  // Function to call on Timer interrupt
 
 void TZXCompat_setAudioLow(void);   // Set the GPIO output pin low
 void TZXCompat_setAudioHigh(void);  // Set the GPIO output pin high
 
+unsigned int TZXCompat_getTickMs(void);
 void TZXCompat_delay(unsigned long time);
 void TZXCompat_noInterrupts(void);  // Disable interrupts
 void TZXCompat_interrupts(void);    // Enable interrupts

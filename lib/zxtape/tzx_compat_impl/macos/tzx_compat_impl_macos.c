@@ -1,10 +1,13 @@
 
-
+#include <assert.h>
 #include <mach/mach.h>
 #include <mach/mach_time.h>
 #include <mach/thread_policy.h>
+#include <math.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdlib.h>
+#include <sys/param.h>
 #include <time.h>
 
 #include "../../../../include/tzx_compat_impl.h"
@@ -17,13 +20,27 @@
 // https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/scheduler/scheduler.html#//apple_ref/doc/uid/TP30000905-CH211-BABHGEFA
 // - https://chromium.googlesource.com/chromium/src/+/refs/heads/main/base/threading/platform_thread_apple.mm <== GOOD
 
-#define AUDIO_THREAD_IDLE_SLEEP_NS 1000000  // 1ms
+#define AUDIO_BUFFER_MULTIPLE 8
+#define AUDIO_BUFFER_LENGTH 2048
+#define TIMER_FIXED_OFFSET_US 50
+#define TIMER_VARAIBLE_OFFSET_US 150
+
+/* structs */
+typedef struct AudioPinSample_ {
+  uint32_t state;
+  uint64_t samples;
+} AudioPinSample;
+
+/* Imported global variables */
+extern uint32_t AudioPlaybackRate;
+extern uint32_t AudioIntervalMs;
 
 /* Exported global variables */
 uint32_t g_pinState = 0;
 
 /* Forward declarations */
-void onTimer();
+static void onTimer();
+static void transferAudioBuffer(void *buffer, unsigned int bufferSize);
 static void createAudioThread(pthread_t thread);
 static void destroyAudioThread(pthread_t thread);
 static void *audioThread(void *arg);
@@ -40,27 +57,85 @@ static volatile bool g_bAudioThreadRunning = false;
 static volatile bool g_bAudioTimerRunning = false;
 static volatile uint64_t g_nAudioTimerPeriodNs = 0;
 
+static uint32_t g_audioBufferLengthMs = 0;
+static uint32_t g_audioBufferLength = 0;
+static uint32_t g_audioBufferReadIndex = 0;
+static uint32_t g_audioBufferWriteIndex = 0;
+static AudioPinSample *g_audioBuffer = NULL;
+static int8_t g_audioBufferLastValue = 0;
+static bool g_audioBufferReady = false;
+
 //
 // TZX Compat Implemetation
 //
 
-void TZXCompat_initialize(void) {
+void TZXCompat_create(void) {
   //
   g_bAudioTimerRunning = false;
   g_nAudioTimerPeriodNs = 0;
 
+  // Allocate the audio buffer
+  // g_audioBufferLengthMs = AudioIntervalMs * AUDIO_BUFFER_MULTIPLE;
+  // g_audioBufferLength = g_audioBufferLengthMs * AudioPlaybackRate / 1000;
+  g_audioBufferLength = AUDIO_BUFFER_LENGTH;
+  g_audioBuffer = (AudioPinSample *)malloc(g_audioBufferLength * sizeof(AudioPinSample));  // Freed in TZXCompat_destroy
+  assert(g_audioBuffer != NULL);
+  g_audioBufferReadIndex = 0;
+  g_audioBufferWriteIndex = 0;
+  g_audioBufferLastValue = 0;
+
+  // Initialise MACOS audio
+  InitMacSound(transferAudioBuffer);
+  MacStartSound();
+
+  // Create the audio thread
   createAudioThread(g_audioThread);
+}
+
+void TZXCompat_destroy(void) {
+  // Destroy the audio thread
+  destroyAudioThread(g_audioThread);
+
+  // Deinit MACOS audio
+  MacStopSound();
+  DeinitMacSound();
+
+  // Free the audio buffer
+  free(g_audioBuffer);
+  g_audioBuffer = NULL;
 }
 
 void TZXCompat_start(void) {
   // Set GPIO pin to output mode (ensuring it is LOW)
   // m_GpioOutputPin.Write(LOW);
   // m_GpioOutputPin.SetMode(GPIOModeOutput);
+
+  // Clear the audio buffer
+  g_audioBufferReadIndex = 0;
+  g_audioBufferWriteIndex = 0;
+  g_audioBufferLastValue = 0;
+  g_audioBufferReady = false;
+
+  // Unmute the audio
+  SetMute(false);
 }
 
 void TZXCompat_stop(void) {
   // Set GPIO pin to input mode
   // m_GpioOutputPin.SetMode(GPIOModeInput);
+
+  // Mute the audio
+  SetMute(true);
+
+  // Clear the audio buffer
+  g_audioBufferReadIndex = 0;
+  g_audioBufferWriteIndex = 0;
+  g_audioBufferLastValue = 0;
+  g_audioBufferReady = false;
+}
+
+void TZXCompat_pause(unsigned char bPause) {
+  //
 }
 
 void TZXCompat_timerInitialize(void) {
@@ -76,9 +151,83 @@ void TZXCompat_timerStart(unsigned long periodUs) {
   // Stop the timer if it is running
   TZXCompat_timerStop();
 
+  // Calculate the period in audio samples
+  uint32_t periodSamples = ((uint64_t)periodUs * AudioPlaybackRate / 1000000ull) + 1;
+
+  // Check for pauses, don't fill the buffer for a pause!
+  bool isPause = periodUs > 1500;  // Period longer than 1.5ms is a pause
+  if (isPause) {
+    // g_pinState = 0;
+    //   periodSamples = 1;
+  }
+
+  // Fill the audio buffer with the pin state and period
+  AudioPinSample *s = &g_audioBuffer[g_audioBufferWriteIndex];
+  s->state = g_pinState;
+  s->samples = periodSamples;
+
+  if (g_audioBufferWriteIndex + 1 != g_audioBufferReadIndex) {
+    g_audioBufferWriteIndex = (g_audioBufferWriteIndex + 1) % g_audioBufferLength;
+  } else {
+    // Buffer has overflowed
+    // printf("Audio buffer overflow\n");
+    // assert(false);
+    printf("^\n");
+  }
+
+  // printf("+");
+
+  uint32_t bufferCount = (g_audioBufferWriteIndex - g_audioBufferReadIndex);
+  if (bufferCount > g_audioBufferLength - 1) {
+    bufferCount = (g_audioBufferLength - g_audioBufferReadIndex) + g_audioBufferWriteIndex;
+  }
+
+  bool bufferLevelGood = (bufferCount * 100) / g_audioBufferLength > 50;
+
   // Start the timer for a period in microseconds
-  g_nAudioTimerPeriodNs = (uint64_t)periodUs * 1000ul;
+  // g_bAudioTimerRunning = true;
+
+  // if ((bufferCount * 100) / g_audioBufferLength > 50) {
+  //   // If buffer over 50% full, wait for the audio thread to catch up
+  //   // g_nAudioTimerPeriodNs = (uint64_t)periodUs * 1000ul;
+  //   g_nAudioTimerPeriodNs = (uint64_t)AudioIntervalMs * NSEC_PER_MSEC * 2ull;  // 2x the audio interval
+
+  //   // Yield the thread
+  //   pthread_yield_np();
+
+  //   // Signal the audio thread (TODO: use a semaphore and a mutex for protection)
+  //   sem_post(g_audioSemaphore);
+  // } else {
+  //   // If buffer under 50% full, signal the audio thread without delay
+  //   g_nAudioTimerPeriodNs = 0ull;
+
+  //   // Yield the thread
+  //   pthread_yield_np();
+
+  //   // Signal the audio thread without delay (TODO: use a semaphore and a mutex for protection)
+  //   sem_post(g_audioSemaphore);
+  // }
+
+  // Remove a little from the wait period so this thread does not get ahead of the audio thread
+  uint64_t waitPeriodUs = MAX(periodUs + TIMER_FIXED_OFFSET_US, 0);
+
+  if (bufferLevelGood) {
+    // Wait longer if buffer getting full
+    g_audioBufferReady = true;
+    waitPeriodUs += TIMER_VARAIBLE_OFFSET_US;
+    // printf("F\n");
+  } else {
+    if (!g_audioBufferReady) {
+      // Don't wait at all initially if buffer not ready to fill buffer quickly
+      g_nAudioTimerPeriodNs = 0;
+    } else {
+      // Wait a little shorter to fill buffer
+      waitPeriodUs -= TIMER_VARAIBLE_OFFSET_US;
+    }
+  }
+
   g_bAudioTimerRunning = true;
+  g_nAudioTimerPeriodNs = waitPeriodUs * 1000ull;
 
   // Signal the audio thread (TODO: use a semaphore and a mutex for protection)
   sem_post(g_audioSemaphore);
@@ -90,20 +239,9 @@ void TZXCompat_timerStop(void) {
   g_nAudioTimerPeriodNs = 0;
 }
 
-void onTimer() {
+static void onTimer() {
   // Fire the timer event in the TZXCompat layer
   TZXCompat_onTimer();
-}
-
-unsigned int TZXCompat_timerGetMs(void) {
-  // Get the current timer value in milliseconds
-  struct timespec spec;
-
-  clock_gettime(CLOCK_REALTIME, &spec);
-
-  unsigned int ms = (unsigned int)((spec.tv_sec * 1000) + (spec.tv_nsec / NSEC_PER_SEC));
-
-  return ms;
 }
 
 // TODO - not to be implemetned but to be called on timer interrupt
@@ -137,6 +275,17 @@ void TZXCompat_setAudioHigh() {
   // }
   // printf("%d\n", g_nAudioTimerPeriodNs);
   g_pinState = 1;
+}
+
+unsigned int TZXCompat_getTickMs(void) {
+  // Get the current tick/time value in milliseconds
+  struct timespec spec;
+
+  clock_gettime(CLOCK_REALTIME, &spec);
+
+  unsigned int ms = (unsigned int)((spec.tv_sec * 1000) + (spec.tv_nsec / NSEC_PER_SEC));
+
+  return ms;
 }
 
 /**
@@ -220,6 +369,78 @@ void zxtape_log(const char *pLevel, const char *pFormat, ...) {
 // private functions
 //
 
+static void transferAudioBuffer(void *buffer, unsigned int bufferSize) {
+  // If buffer is not ready, fill with silence
+  if (!g_audioBufferReady) {
+    memset(buffer, 0x00, bufferSize);
+    printf("W\n");
+    return;
+  }
+  // printf("-");
+
+  int8_t *pBufferOut = (int8_t *)buffer;
+  // g_audioBufferReadIndex = 0;
+  // g_audioBufferWriteIndex = 0;
+  // g_audioBufferLastValue = 0;
+
+  uint32_t bufferCount = (g_audioBufferWriteIndex - g_audioBufferReadIndex);
+  if (bufferCount > g_audioBufferLength - 1) {
+    bufferCount = (g_audioBufferLength - g_audioBufferReadIndex) + g_audioBufferWriteIndex;
+  }
+  bool bPrint = ((double)rand() / RAND_MAX) * 100 < 10;  // Print 1 in 100 times
+  if (bPrint) printf("Buffer: %d\n", bufferCount);
+
+  bool bEmpty = false;
+
+  uint32_t i = 0;
+  AudioPinSample *aps = NULL;
+  int8_t value = g_audioBufferLastValue;
+  bool bEndOfAps = false;
+
+  while (i < bufferSize) {
+    if (aps == NULL) {
+      // If we don't have an AudioPinSample, get the next one from the buffer
+      if (g_audioBufferReadIndex != g_audioBufferWriteIndex) {
+        aps = &g_audioBuffer[g_audioBufferReadIndex];
+        value = g_audioBufferLastValue = aps->state ? 0xFF : 0x00;
+      } else {
+        // Buffer is empty
+        bEmpty = true;
+      }
+    }
+
+    if (!bEmpty) {
+      // If we have an AudioPinSample, get the value, decrement the samples and check if we need to get the next one
+      if (aps->samples > 0) {
+        aps->samples--;
+
+        if (aps->samples == 0) {
+          bEndOfAps = true;
+        }
+      } else {
+        bEndOfAps = true;
+      }
+    }
+
+    // Handle end of AudioPinSample: Increment the read index and set the AudioPinSample to NULL
+    if (bEndOfAps) {
+      g_audioBufferReadIndex = (g_audioBufferReadIndex + 1) % g_audioBufferLength;
+      aps = NULL;
+      bEndOfAps = false;
+    }
+
+    // Set the value in the audio buffer
+    pBufferOut[i] = value;
+    i++;
+  }
+
+  if (bEmpty) {
+    printf("E\n");
+  }
+
+  // memset(buffer, g_pinState ? 0xFF : 0x00, bufferSize);
+}
+
 static void createAudioThread(pthread_t thread) {
   if (g_bAudioThreadRunning) return;
 
@@ -256,9 +477,6 @@ static void destroyAudioThread(pthread_t thread) {
 }
 
 static void *audioThread(void *arg) {
-  InitMacSound();
-  MacStartSound();
-
   while (g_bAudioThreadRunning) {
     // Wait for the semaphore
     sem_wait(g_audioSemaphore);
