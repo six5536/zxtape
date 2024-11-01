@@ -9,6 +9,9 @@
 
 #include "./games/starquake.h"
 
+#define SLEEP_WHEN_IDLE_MS 500
+#define SLEEP_WHEN_PLAYING_MS 500
+
 /* Forward declarations */
 static void createTapeThread(pthread_t thread, ZXTAPE_HANDLE_T* pZxTape);
 static void destroyTapeThread(pthread_t thread);
@@ -80,10 +83,17 @@ static void* tapeThread(void* arg) {
 
   while (g_bZxtapeThreadRunning) {
     zxtape_run(pZxTape);
-    if (g_bZxtapeThreadRunning) {
-      // TODO - different sleep rate for stopped / playing
-      pthread_yield_np();
-    }
+
+    if (!g_bZxtapeThreadRunning) break;  // Check if the thread is still running
+
+    // Different sleep rate for stopped / playing
+    time_t sleepTimeMs = zxtape_isPlaying(pZxTape) ? SLEEP_WHEN_PLAYING_MS : SLEEP_WHEN_IDLE_MS;
+
+    // Wait for the sleep period
+    struct timespec ts;
+    ts.tv_sec = sleepTimeMs / NSEC_PER_MSEC;
+    ts.tv_nsec = sleepTimeMs % NSEC_PER_MSEC;
+    nanosleep(&ts, NULL);
   }
 
   return (void*)0;

@@ -1,12 +1,6 @@
 
-#include <assert.h>
-#include <mach/mach.h>
-#include <mach/mach_time.h>
-#include <mach/thread_policy.h>
-#include <math.h>
+
 #include <pthread.h>
-#include <semaphore.h>
-#include <stdlib.h>
 #include <sys/param.h>
 #include <time.h>
 
@@ -39,11 +33,11 @@ extern uint32_t AudioIntervalMs;
 //
 
 /* Forward declarations */
-static void onTimer();
+void onTimer();
 static void transferAudioBuffer(void *buffer, unsigned int bufferSize);
-static void createAudioThread(pthread_t thread);
-static void destroyAudioThread(pthread_t thread);
-static void *audioThread(void *arg);
+// static void createAudioThread(pthread_t thread);
+// static void destroyAudioThread(pthread_t thread);
+// static void *audioThread(void *arg);
 static int setRealtime(uint32_t period, uint32_t computation, uint32_t constraint, boolean_t preemptible);
 static int setPriorityRealtimeAudio();
 
@@ -52,7 +46,6 @@ static pthread_t g_audioThread = NULL;
 static macos_timer_t g_audioTimer = NULL;
 static struct sigevent g_audioTimerEvent;
 static struct itimerspec g_audioTimerSpec;
-static sem_t *g_audioSemaphore;
 static volatile bool g_bAudioThreadRunning = false;
 static volatile bool g_bAudioTimerRunning = false;
 static volatile uint64_t g_nAudioTimerPeriodNs = 0;
@@ -73,6 +66,9 @@ static uint32_t g_pinState = 0;
 
 void TZXCompat_create(void) {
   //
+
+  // Create the timer
+
   g_bAudioTimerRunning = false;
   g_nAudioTimerPeriodNs = 0;
 
@@ -90,13 +86,27 @@ void TZXCompat_create(void) {
   InitMacSound(transferAudioBuffer);
   MacStartSound();
 
-  // Create the audio thread
-  createAudioThread(g_audioThread);
+  // Event
+  g_audioTimerEvent.sigev_notify = SIGEV_THREAD;
+  g_audioTimerEvent.sigev_notify_function = onTimer;
+  g_audioTimerEvent.sigev_notify_attributes = NULL;
+  g_audioTimerEvent.sigev_value.sival_ptr = NULL;
+  g_audioTimerEvent.sigev_value.sival_int = 0;
+
+  // Spec
+  g_audioTimerSpec.it_interval.tv_sec = 0;
+  g_audioTimerSpec.it_interval.tv_nsec = 0;
+  g_audioTimerSpec.it_value.tv_sec = 0;
+  g_audioTimerSpec.it_value.tv_nsec = 0;
+
+  // Create
+  int res = timer_create(CLOCK_REALTIME, &g_audioTimerEvent, &g_audioTimer);
+  assert(res == 0);
 }
 
 void TZXCompat_destroy(void) {
   // Destroy the audio thread
-  destroyAudioThread(g_audioThread);
+  timer_delete(g_audioTimer);
 
   // Deinit MACOS audio
   MacStopSound();
@@ -207,17 +217,27 @@ void TZXCompat_timerStart(unsigned long periodUs) {
   g_bAudioTimerRunning = true;
   g_nAudioTimerPeriodNs = waitPeriodUs * 1000ull;
 
-  // Signal the audio thread (TODO: use a semaphore and a mutex for protection)
-  sem_post(g_audioSemaphore);
+  // Start the timer for a period in microseconds
+
+  // Configure and start the timer
+  g_audioTimerSpec.it_value.tv_sec = g_nAudioTimerPeriodNs / NSEC_PER_SEC;
+  g_audioTimerSpec.it_value.tv_nsec = g_nAudioTimerPeriodNs % NSEC_PER_SEC;
+
+  timer_settime(g_audioTimer, 0, &g_audioTimerSpec, NULL);
 }
 
 void TZXCompat_timerStop(void) {
   // Stop the timer
   g_bAudioTimerRunning = false;
   g_nAudioTimerPeriodNs = 0;
+
+  g_audioTimerSpec.it_value.tv_sec = 0;
+  g_audioTimerSpec.it_value.tv_nsec = 0;
+
+  timer_settime(g_audioTimer, 0, &g_audioTimerSpec, NULL);
 }
 
-static void onTimer() {
+void onTimer() {
   // Fire the timer event in the TZXCompat layer
   TZXCompat_onTimer();
 }
@@ -237,7 +257,7 @@ void TZXCompat_setAudioLow() {
   // for (int i = 0; i < loops; i++) {
   //   printf("_");
   // }
-  // printf("%d\n", g_nAudioTimerPeriodNs);
+  // printf("%llu\n", g_nAudioTimerPeriodNs);
   g_pinState = 0;
 }
 
@@ -256,7 +276,7 @@ void TZXCompat_setAudioHigh() {
 }
 
 unsigned int TZXCompat_getTickMs(void) {
-  // Get the current tick/time value in milliseconds
+  // Get the current timer value in milliseconds
   struct timespec spec;
 
   clock_gettime(CLOCK_REALTIME, &spec);
@@ -419,119 +439,60 @@ static void transferAudioBuffer(void *buffer, unsigned int bufferSize) {
   // memset(buffer, g_pinState ? 0xFF : 0x00, bufferSize);
 }
 
-static void createAudioThread(pthread_t thread) {
-  if (g_bAudioThreadRunning) return;
+// void createAudioThread(pthread_t thread) {
+//   if (g_bAudioThreadRunning) return;
 
-  g_bAudioThreadRunning = true;
+//   g_bAudioThreadRunning = true;
 
-  // Create the audio thread semaphore
-  g_audioSemaphore = sem_open("audioSemaphore", O_CREAT, 0644, 0);
+//   int res = pthread_create(&thread, NULL, audioThread, NULL);
+//   assert(res == 0);
 
-  // Enable SIGUSR1 signal for the audio thread
-  // sigemptyset(&g_audioThreadSignalMask);
-  // sigaddset(&g_audioThreadSignalMask, SIGUSR1);
-  // pthread_sigmask(SIG_UNBLOCK, &g_audioThreadSignalMask, NULL);
+//   // Join the thread - no, as we want to run the tape in the background
+//   // pthread_join(thread, NULL);
 
-  int res = pthread_create(&thread, NULL, audioThread, NULL);
-  assert(res == 0);
+//   // Set the thread priority for realtime audio
+//   setPriorityRealtimeAudio();
+// }
 
-  // Join the thread - no, as we want to run the tape in the background
-  // pthread_join(thread, NULL);
+// void destroyAudioThread(pthread_t thread) {
+//   if (!g_bAudioThreadRunning) return;
 
-  // Set the thread priority for realtime audio
-  setPriorityRealtimeAudio();
-}
+//   g_bAudioThreadRunning = false;
 
-static void destroyAudioThread(pthread_t thread) {
-  if (!g_bAudioThreadRunning) return;
+//   // Cancel the thread
+//   pthread_cancel(thread);
 
-  g_bAudioThreadRunning = false;
+//   // Join the thread
+//   pthread_join(thread, NULL);
+// }
 
-  // Cancel the thread
-  pthread_cancel(thread);
+// void *audioThread(void *arg) {
+//   while (g_bAudioThreadRunning) {
+//     if (g_bAudioTimerRunning) {
+//       // Wait for the timer period
+//       struct timespec ts;
+//       ts.tv_sec = g_nAudioTimerPeriodNs / NSEC_PER_SEC;
+//       ts.tv_nsec = g_nAudioTimerPeriodNs % NSEC_PER_SEC;
+//       nanosleep(&ts, NULL);
 
-  // Join the thread
-  pthread_join(thread, NULL);
-}
+//       if (!g_bAudioThreadRunning) break;  // Check if the thread is still running
 
-static void *audioThread(void *arg) {
-  while (g_bAudioThreadRunning) {
-    // Wait for the semaphore
-    sem_wait(g_audioSemaphore);
-    if (!g_bAudioThreadRunning) break;  // Check if the thread is still running
+//       // Call the timer function
+//       if (g_bAudioTimerRunning) {
+//         onTimer();
+//       }
 
-    if (g_bAudioTimerRunning) {
-      // Wait for the timer period
-      struct timespec ts;
-      ts.tv_sec = g_nAudioTimerPeriodNs / NSEC_PER_SEC;
-      ts.tv_nsec = g_nAudioTimerPeriodNs % NSEC_PER_SEC;
-      int res = nanosleep(&ts, NULL);
+//       // Reset the timer
+//       g_bAudioTimerRunning = false;
+//       g_nAudioTimerPeriodNs = 0;
+//     } else {
+//       // Wait for the 'AUDIO_THREAD_IDLE_SLEEP_NS' period
+//       struct timespec ts;
+//       ts.tv_sec = AUDIO_THREAD_IDLE_SLEEP_NS / NSEC_PER_SEC;
+//       ts.tv_nsec = AUDIO_THREAD_IDLE_SLEEP_NS % NSEC_PER_SEC;
+//       nanosleep(&ts, NULL);
+//     }
+//   }
 
-      if (!g_bAudioThreadRunning) break;  // Check if the thread is still running
-
-      // Call the timer function
-      if (g_bAudioTimerRunning && res == 0) {
-        onTimer();
-      }
-    } else {
-      // Yield the thread
-      pthread_yield_np();
-    }
-  }
-
-  return (void *)0;
-}
-
-static int setPriorityRealtimeAudio() {
-  // Set the thread priority to realtime
-
-  // Code based on information in
-  // https://chromium.googlesource.com/chromium/src/+/refs/heads/main/base/threading/platform_thread_apple.mm
-
-  thread_time_constraint_policy_data_t time_constraints;
-  mach_timebase_info_data_t tb_info;
-  mach_timebase_info(&tb_info);
-
-  // Empirical configuration.
-  // Define the guaranteed and max fraction of time for the audio thread.
-  // These "duty cycle" values can range from 0 to 1.  A value of 0.5
-  // means the scheduler would give half the time to the thread.
-  // These values have empirically been found to yield good behavior.
-  // Good means that audio performance is high and other threads won't starve.
-  const double kGuaranteedAudioDutyCycle = 0.75;
-  const double kMaxAudioDutyCycle = 0.85;
-  // Define constants determining how much time the audio thread can
-  // use in a given time quantum.  All times are in milliseconds.
-  // About 128 frames @44.1KHz
-  const double kTimeQuantum = 2.9;
-  // Time guaranteed each quantum.
-  const double kAudioTimeNeeded = kGuaranteedAudioDutyCycle * kTimeQuantum;
-  // Maximum time each quantum.
-  const double kMaxTimeAllowed = kMaxAudioDutyCycle * kTimeQuantum;
-  // Get the conversion factor from milliseconds to absolute time
-  // which is what the time-constraints call needs.
-  double ms_to_abs_time = (double)(tb_info.denom) / tb_info.numer * 1000000.0f;
-  time_constraints.period = kTimeQuantum * ms_to_abs_time;
-  time_constraints.computation = kAudioTimeNeeded * ms_to_abs_time;
-  time_constraints.constraint = kMaxTimeAllowed * ms_to_abs_time;
-  time_constraints.preemptible = 0;
-
-  return setRealtime(time_constraints.period, time_constraints.computation, time_constraints.constraint,
-                     time_constraints.preemptible);
-}
-
-static int setRealtime(uint32_t period, uint32_t computation, uint32_t constraint, boolean_t preemptible) {
-  struct thread_time_constraint_policy ttcpolicy;
-  int ret;
-  thread_port_t threadport = pthread_mach_thread_np(pthread_self());
-
-  ttcpolicy.period = period;
-  ttcpolicy.computation = computation;
-  ttcpolicy.constraint = constraint;
-  ttcpolicy.preemptible = preemptible;
-
-  ret = thread_policy_set(threadport, THREAD_TIME_CONSTRAINT_POLICY, (thread_policy_t)&ttcpolicy,
-                          THREAD_TIME_CONSTRAINT_POLICY_COUNT);
-
-  return ret;
-}
+//   return (void *)0;
+// }

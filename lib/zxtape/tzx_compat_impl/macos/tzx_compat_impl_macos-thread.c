@@ -16,7 +16,23 @@
 // https://developer.apple.com/library/archive/documentation/Darwin/Conceptual/KernelProgramming/scheduler/scheduler.html#//apple_ref/doc/uid/TP30000905-CH211-BABHGEFA
 // - https://chromium.googlesource.com/chromium/src/+/refs/heads/main/base/threading/platform_thread_apple.mm <== GOOD
 
-#define AUDIO_THREAD_IDLE_SLEEP_NS NSEC_PER_SEC * 60 * 60 * 24 * 365  // 1 year
+#define AUDIO_BUFFER_MULTIPLE 8
+#define AUDIO_BUFFER_LENGTH 2048
+#define TIMER_FIXED_OFFSET_US 50
+#define TIMER_VARAIBLE_OFFSET_US 150
+
+/* structs */
+typedef struct AudioPinSample_ {
+  uint32_t state;
+  uint64_t samples;
+} AudioPinSample;
+
+/* Imported global variables */
+extern uint32_t AudioPlaybackRate;
+extern uint32_t AudioIntervalMs;
+
+/* Exported global variables */
+//
 
 /* Forward declarations */
 static void onTimer();
@@ -35,6 +51,16 @@ static struct itimerspec g_audioTimerSpec;
 static volatile bool g_bAudioThreadRunning = false;
 static volatile bool g_bAudioTimerRunning = false;
 static volatile uint64_t g_nAudioTimerPeriodNs = 0;
+
+static uint32_t g_audioBufferLengthMs = 0;
+static uint32_t g_audioBufferLength = 0;
+static uint32_t g_audioBufferReadIndex = 0;
+static uint32_t g_audioBufferWriteIndex = 0;
+static AudioPinSample *g_audioBuffer = NULL;
+static int8_t g_audioBufferLastValue = 0;
+static bool g_audioBufferReady = false;
+
+static uint32_t g_pinState = 0;
 
 //
 // TZX Compat Implemetation
