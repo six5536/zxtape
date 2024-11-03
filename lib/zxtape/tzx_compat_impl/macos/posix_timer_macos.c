@@ -1,5 +1,5 @@
 /**
- * Implementation of the POSIX timer for macOS
+ * Implementation of the POSIX timer for macOS using dispatch
  *
  * The following timer code is based on a Gist by Jorgen Lundman:
  *

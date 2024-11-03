@@ -39,7 +39,8 @@ if(MACOS)
   add_library(
     tzx_compat
     lib/zxtape/tzx_compat_impl/macos/tzx_compat_impl_macos.c
-    lib/zxtape/tzx_compat_impl/macos/posix_timer_macos.c
+    # lib/zxtape/tzx_compat_impl/macos/posix_timer_macos.c
+    lib/zxtape/tzx_compat_impl/macos/thread_timer_macos.c
     lib/zxtape/tzx_compat_impl/macos/audio_macos.c
   )
 else(CIRCLE)

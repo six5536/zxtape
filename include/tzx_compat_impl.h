@@ -10,12 +10,14 @@
 #include "../lib/zxtape/tzx_compat/circle/tzx_compat_circle_os_headers.h"
 #endif  // __ZX_TAPE_CIRCLE__
 
+// TZX State
+extern bool TZX_pauseOn;  // Pause state
+
 // TZX Compat APIs
 void TZXCompat_create(void);
 void TZXCompat_destroy(void);
 void TZXCompat_start(void);
 void TZXCompat_stop(void);
-void TZXCompat_pause(bool bPause);
 
 void TZXCompat_timerInitialize(void);
 void TZXCompat_timerStart(unsigned long periodUs);

@@ -53,8 +53,9 @@
           "value": "Something something"
         }
       ],
-      "externalConsole": false,
-      "internalConsoleOptions": "openOnSessionStart",
+      "externalConsole": true,
+      // "integratedTerminal": true,
+      // "internalConsoleOptions": "openOnSessionStart",
       "MIMode": "lldb"
     },
     {

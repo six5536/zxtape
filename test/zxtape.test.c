@@ -9,8 +9,8 @@
 
 #include "./games/starquake.h"
 
-#define SLEEP_WHEN_IDLE_MS 500
-#define SLEEP_WHEN_PLAYING_MS 500
+#define SLEEP_WHEN_IDLE_NS 250ull * NSEC_PER_MSEC    // 250ms
+#define SLEEP_WHEN_PLAYING_NS 100ul * NSEC_PER_USEC  // 50us
 
 /* Forward declarations */
 static void createTapeThread(pthread_t thread, ZXTAPE_HANDLE_T* pZxTape);
@@ -41,15 +41,28 @@ int main(int argc, char* argv[]) {
   zxtape_playPause(pZxTape);
 
   // Wait for the user to press a key
-  printf("Press Ctrl-D key to stop the tape\n");
+  printf("Press Esc key to stop the tape\n");
 
-  while (getchar() == EOF) {
+  int c;
+  while (1) {
+    c = getchar();
+    printf("Key pressed: %c\n", c);
     // Wait for the user to press a key
+    switch (c) {
+      case 'p':
+        zxtape_playPause(pZxTape);
+        break;
+      case '\x1b':  // ESC key
+        // zxtape_stop(pZxTape); // <== TODO implement stop!
+        break;
+      default:
+        break;
+    }
     pthread_yield_np();
   }
 
   // Destroy the ZXTape instance
-  // zxtape_destroy(pZxTape);
+  zxtape_destroy(pZxTape);
 
   return 0;
 }
@@ -81,18 +94,20 @@ static void destroyTapeThread(pthread_t thread) {
 static void* tapeThread(void* arg) {
   ZXTAPE_HANDLE_T* pZxTape = (ZXTAPE_HANDLE_T*)arg;
 
+  // setPriorityRealtimeAudio();
+
   while (g_bZxtapeThreadRunning) {
     zxtape_run(pZxTape);
 
     if (!g_bZxtapeThreadRunning) break;  // Check if the thread is still running
 
     // Different sleep rate for stopped / playing
-    time_t sleepTimeMs = zxtape_isPlaying(pZxTape) ? SLEEP_WHEN_PLAYING_MS : SLEEP_WHEN_IDLE_MS;
+    time_t sleepTimeNs = zxtape_isPlaying(pZxTape) ? SLEEP_WHEN_PLAYING_NS : SLEEP_WHEN_IDLE_NS;
 
     // Wait for the sleep period
     struct timespec ts;
-    ts.tv_sec = sleepTimeMs / NSEC_PER_MSEC;
-    ts.tv_nsec = sleepTimeMs % NSEC_PER_MSEC;
+    ts.tv_sec = sleepTimeNs / NSEC_PER_SEC;
+    ts.tv_nsec = sleepTimeNs % NSEC_PER_SEC;
     nanosleep(&ts, NULL);
   }
 

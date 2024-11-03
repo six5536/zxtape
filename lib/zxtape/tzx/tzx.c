@@ -127,7 +127,7 @@ void TZXPlay() {
   }
 
 #ifdef __ZX_TAPE__
-  Timer.setPeriod(1000);                   //set 1ms wait at start of a file (to fill initial buffer).
+  Timer.setPeriod(1000); // 1msec                   //set 1ms wait at start of a file (to fill initial buffer).
 #else
   Timer.setPeriod(1000);                     //set 1ms wait at start of a file.
 #endif // __ZX_TAPE__

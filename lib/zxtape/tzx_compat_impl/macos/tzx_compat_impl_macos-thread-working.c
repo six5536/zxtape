@@ -136,10 +136,6 @@ void TZXCompat_stop(void) {
   g_audioBufferReady = false;
 }
 
-void TZXCompat_pause(unsigned char bPause) {
-  //
-}
-
 void TZXCompat_timerInitialize(void) {
   // Initialise / reset the timer
 
@@ -196,11 +192,12 @@ void TZXCompat_timerStart(unsigned long periodUs) {
     // printf("F\n");
   } else {
     if (!g_audioBufferReady) {
-      // Don't wait at all initially if buffer not ready to fill buffer quickly
-      g_nAudioTimerPeriodNs = 0;
+      // When starting up, don't wait long buffer not ready, in order to fill buffer quickly
+      // However, the first wait must be honoured in order that the internal TZX buffer is filled
+      waitPeriodUs = 100;
     } else {
       // Wait a little shorter to fill buffer
-      waitPeriodUs -= TIMER_VARAIBLE_OFFSET_US;
+      waitPeriodUs = 1;  //-= TIMER_VARAIBLE_OFFSET_US;
     }
   }
 
@@ -439,7 +436,7 @@ static void createAudioThread(pthread_t thread) {
   // pthread_join(thread, NULL);
 
   // Set the thread priority for realtime audio
-  setPriorityRealtimeAudio();
+  // setPriorityRealtimeAudio();
 }
 
 static void destroyAudioThread(pthread_t thread) {
@@ -455,6 +452,8 @@ static void destroyAudioThread(pthread_t thread) {
 }
 
 static void *audioThread(void *arg) {
+  int res = 0;
+
   while (g_bAudioThreadRunning) {
     // Wait for the semaphore
     sem_wait(g_audioSemaphore);
@@ -462,10 +461,12 @@ static void *audioThread(void *arg) {
 
     if (g_bAudioTimerRunning) {
       // Wait for the timer period
-      struct timespec ts;
-      ts.tv_sec = g_nAudioTimerPeriodNs / NSEC_PER_SEC;
-      ts.tv_nsec = g_nAudioTimerPeriodNs % NSEC_PER_SEC;
-      int res = nanosleep(&ts, NULL);
+      if (g_nAudioTimerPeriodNs > 0) {
+        struct timespec ts;
+        ts.tv_sec = g_nAudioTimerPeriodNs / NSEC_PER_SEC;
+        ts.tv_nsec = g_nAudioTimerPeriodNs % NSEC_PER_SEC;
+        res = nanosleep(&ts, NULL);
+      }
 
       if (!g_bAudioThreadRunning) break;  // Check if the thread is still running
 
@@ -473,9 +474,6 @@ static void *audioThread(void *arg) {
       if (g_bAudioTimerRunning && res == 0) {
         onTimer();
       }
-    } else {
-      // Yield the thread
-      pthread_yield_np();
     }
   }
 

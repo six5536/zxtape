@@ -60,6 +60,7 @@
 #define OricDataBlock           TZX_OricDataBlock
 #define Log(pFormat, ...)       TZXCompat_log(pFormat, __VA_ARGS__)
 
+#define buffsize                TZX_buffsize
 #define fileName                TZX_fileName
 #define fileIndex               TZX_fileIndex
 #define entry                   TZX_entry
@@ -155,11 +156,8 @@ PROGMEM const char UEFFile[9] = {'U','E','F',' ','F','i','l','e','!'};
 #define NAMELAST              10
 
 //Buffer size
-#ifdef __ZX_TAPE__
+#ifndef __ZX_TAPE__
 // Had to change buffer index type from byte to support buffers > 255 bytes
-#define buffsize              1024
-// #define buffsize              64
-#else
 #define buffsize              64
 #endif // __ZX_TAPE__
 

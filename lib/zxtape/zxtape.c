@@ -424,11 +424,9 @@ static void loopControl(ZXTAPE_T *pZxTape) {
       if (TZX_pauseOn) {
         // Unpause playback
         TZX_pauseOn = false;
-        TZXCompat_pause(false);
       } else {
         // Pause playback
         TZX_pauseOn = true;
-        TZXCompat_pause(true);
       }
     }
   }

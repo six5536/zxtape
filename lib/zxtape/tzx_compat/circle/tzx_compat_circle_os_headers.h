@@ -23,6 +23,8 @@ typedef unsigned char bool;
 #define true 1
 #endif
 
+#define TZX_buffsize 1024  // 1k buffer
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -146,10 +146,6 @@ void TZXCompat_stop(void) {
   g_audioBufferReady = false;
 }
 
-void TZXCompat_pause(unsigned char bPause) {
-  //
-}
-
 void TZXCompat_timerInitialize(void) {
   // Initialise / reset the timer
 
@@ -206,11 +202,12 @@ void TZXCompat_timerStart(unsigned long periodUs) {
     // printf("F\n");
   } else {
     if (!g_audioBufferReady) {
-      // Don't wait at all initially if buffer not ready to fill buffer quickly
-      g_nAudioTimerPeriodNs = 0;
+      // When starting up, don't wait long buffer not ready, in order to fill buffer quickly
+      // However, the first wait must be honoured in order that the internal TZX buffer is filled
+      waitPeriodUs = 100;
     } else {
       // Wait a little shorter to fill buffer
-      waitPeriodUs -= TIMER_VARAIBLE_OFFSET_US;
+      waitPeriodUs = 1;  //-= TIMER_VARAIBLE_OFFSET_US;
     }
   }
 
