@@ -21,7 +21,8 @@ typedef unsigned char bool;
 #define true 1
 #endif
 
-#define TZX_buffsize 1024  // 1k buffer
+#define TZX_buffsize 1536  // 1.5k buffer
+// #define TZX_buffsize 1024 * 64  // 64k buffer
 
 #ifdef __cplusplus
 extern "C" {

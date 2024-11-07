@@ -11,7 +11,9 @@
 #endif  // __ZX_TAPE_CIRCLE__
 
 // TZX State
-extern bool TZX_pauseOn;  // Pause state
+extern bool TZX_pauseOn;     // Pause state
+extern char TZX_fileName[];  // Current filename
+extern size_t TZX_filesize;  // Current file size
 
 // TZX Compat APIs
 void TZXCompat_create(void);

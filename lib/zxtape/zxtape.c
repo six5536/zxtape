@@ -57,7 +57,7 @@ static u32 g_nInstanceId = 0;
 /* Forward function declarations */
 static void endPlayback(ZXTAPE_T *pZxTape);
 static void loopPlayback(ZXTAPE_T *pZxTape);
-static void loopControl(ZXTAPE_T *pZxTape);
+static void loopControl(ZXTAPE_T *pZxTape, unsigned nIntervalMs);
 static void playFile(ZXTAPE_T *pZxTape);
 static void stopFile(ZXTAPE_T *pZxTape);
 static bool checkButtonPlayPause(ZXTAPE_T *pZxTape);
@@ -349,7 +349,7 @@ bool zxtape_isPaused(ZXTAPE_HANDLE_T *pInstance) {
  *
  * @param pInstance Pointer to the ZxTape instance
  */
-void zxtape_run(ZXTAPE_HANDLE_T *pInstance) {
+void zxtape_run(ZXTAPE_HANDLE_T *pInstance, unsigned nIntervalMs) {
   assert(pInstance != NULL);
   ZXTAPE_T *pZxTape = (ZXTAPE_T *)pInstance;
 
@@ -357,7 +357,7 @@ void zxtape_run(ZXTAPE_HANDLE_T *pInstance) {
   loopPlayback(pZxTape);
 
   //  Control loop
-  loopControl(pZxTape);
+  loopControl(pZxTape, nIntervalMs);
 }
 
 //
@@ -403,15 +403,20 @@ static void loopPlayback(ZXTAPE_T *pZxTape) {
 /**
  * Handle control loop
  */
-static void loopControl(ZXTAPE_T *pZxTape) {
-  const unsigned lastTimerMs = TZXCompat_getTickMs();
-  const unsigned elapsedMs = (lastTimerMs - pZxTape->nlastTimerMs);
+static void loopControl(ZXTAPE_T *pZxTape, unsigned nIntervalMs) {
+  // const unsigned lastTimerMs = TZXCompat_getTickMs();
+  // const unsigned elapsedMs = (lastTimerMs - pZxTape->nlastTimerMs);
 
   // Only run every 100ms
-  if (elapsedMs < ZX_TAPE_CONTROL_UPDATE_MS) return;
+  // if (elapsedMs < ZX_TAPE_CONTROL_UPDATE_MS) return;
   // zxtape_log_debug("loop_control: %d", elapsedMs);
 
-  pZxTape->nlastTimerMs = lastTimerMs;
+  // pZxTape->nlastTimerMs = lastTimerMs;
+
+  const unsigned elapsedMs = pZxTape->nlastTimerMs + nIntervalMs;
+  // Only run every 100ms
+  if (elapsedMs < ZX_TAPE_CONTROL_UPDATE_MS) return;
+  pZxTape->nlastTimerMs = 0;
 
   // Handle Play / pause button
   if (checkButtonPlayPause(pZxTape)) {

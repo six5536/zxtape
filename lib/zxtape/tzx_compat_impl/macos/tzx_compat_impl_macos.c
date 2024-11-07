@@ -6,7 +6,7 @@
 
 #include "../../../../include/tzx_compat_impl.h"
 #include "audio_macos.h"
-#include "thread_timer_macos.h"
+#include "timer_macos.h"
 
 // Real-time threads, see
 // - https://developer.apple.com/library/archive/technotes/tn2169/_index.html
@@ -15,7 +15,8 @@
 // - https://chromium.googlesource.com/chromium/src/+/refs/heads/main/base/threading/platform_thread_apple.mm <== GOOD
 
 #define AUDIO_BUFFER_MULTIPLE 8
-#define AUDIO_BUFFER_LENGTH 4096
+#define AUDIO_BUFFER_LENGTH 4096 * 2
+#define AUDIO_BUFFER_EQUALIBRIUM_PERCENT 20
 #define TIMER_FIXED_OFFSET_US 50
 #define TIMER_VARAIBLE_OFFSET_US 150
 
@@ -33,7 +34,7 @@ extern uint32_t AudioIntervalMs;
 //
 
 /* Forward declarations */
-void onTimer();
+static void onTimer();
 static void transferAudioBuffer(void *buffer, unsigned int bufferSize);
 // static void createAudioThread(pthread_t thread);
 // static void destroyAudioThread(pthread_t thread);
@@ -42,6 +43,8 @@ static int setRealtime(uint32_t period, uint32_t computation, uint32_t constrain
 static int setPriorityRealtimeAudio();
 
 /* Local variables */
+static pthread_mutex_t g_interruptMutex;
+static pthread_mutexattr_t g_interruptMutexAttr;
 static pthread_t g_audioThread = NULL;
 static macos_timer_t g_audioTimer = NULL;
 static struct sigevent g_audioTimerEvent;
@@ -60,12 +63,17 @@ static bool g_audioBufferReady = false;
 
 static uint32_t g_pinState = 0;
 
+static FILE *g_pFile = NULL;
+
 //
 // TZX Compat Implemetation
 //
 
 void TZXCompat_create(void) {
-  //
+  // Create the interrupt mutex
+  pthread_mutexattr_init(&g_interruptMutexAttr);
+  pthread_mutexattr_settype(&g_interruptMutexAttr, PTHREAD_MUTEX_RECURSIVE);
+  pthread_mutex_init(&g_interruptMutex, &g_interruptMutexAttr);
 
   // Create the timer
 
@@ -115,6 +123,9 @@ void TZXCompat_destroy(void) {
   // Free the audio buffer
   free(g_audioBuffer);
   g_audioBuffer = NULL;
+
+  // Destroy the interrupt mutex
+  pthread_mutex_destroy(&g_interruptMutex);
 }
 
 void TZXCompat_start(void) {
@@ -160,7 +171,7 @@ void TZXCompat_timerStart(unsigned long periodUs) {
   TZXCompat_timerStop();
 
   // Calculate the period in audio samples
-  uint32_t periodSamples = ((uint64_t)periodUs * AudioPlaybackRate / 1000000ull) + 1;
+  uint32_t periodSamples = ((uint64_t)periodUs * AudioPlaybackRate / 1000000ull);
 
   // Check for pauses, don't fill the buffer for a pause!
 
@@ -185,7 +196,7 @@ void TZXCompat_timerStart(unsigned long periodUs) {
     bufferCount = (g_audioBufferLength - g_audioBufferReadIndex) + g_audioBufferWriteIndex;
   }
 
-  bool bufferLevelGood = (bufferCount * 100) / g_audioBufferLength > 10;
+  bool bufferLevelGood = (bufferCount * 100) / g_audioBufferLength > AUDIO_BUFFER_EQUALIBRIUM_PERCENT;
 
   // Remove a little from the wait period so this thread does not get ahead of the audio thread
   uint64_t waitPeriodUs = MAX(periodUs + TIMER_FIXED_OFFSET_US, 0);
@@ -230,8 +241,14 @@ void TZXCompat_timerStop(void) {
 }
 
 void onTimer() {
+  // Lock the 'interrupt' mutex when calling the timer routine to block out the main loop thread
+  pthread_mutex_lock(&g_interruptMutex);
+
   // Fire the timer event in the TZXCompat layer
   TZXCompat_onTimer();
+
+  // Unlock the 'interrupt' mutex
+  pthread_mutex_unlock(&g_interruptMutex);
 }
 
 // TODO - not to be implemetned but to be called on timer interrupt
@@ -242,28 +259,14 @@ void onTimer() {
 // Set the GPIO output pin low
 void TZXCompat_setAudioLow() {
   // TZXCompat_log("LowWrite");
-  // pZxTape->wave_set_low();
   // m_GpioOutputPin.Write(LOW);
-
-  // int loops = g_nAudioTimerPeriodNs / 10000;
-  // for (int i = 0; i < loops; i++) {
-  //   printf("_");
-  // }
-  // printf("%llu\n", g_nAudioTimerPeriodNs);
   g_pinState = 0;
 }
 
 // Set the GPIO output pin high
 void TZXCompat_setAudioHigh() {
   // TZXCompat_log("HighWrite");
-  // pZxTape->wave_set_high();
   // m_GpioOutputPin.Write(HIGH);
-
-  // int loops = g_nAudioTimerPeriodNs / 10000;
-  // for (int i = 0; i < loops; i++) {
-  //   printf("-");
-  // }
-  // printf("%d\n", g_nAudioTimerPeriodNs);
   g_pinState = 1;
 }
 
@@ -287,16 +290,25 @@ void TZXCompat_delay(unsigned long ms) {
 
 /**
  * Disable interrupts
+ *
+ * The timer is not on an interrupt, but is a separate thread. Use a mutex for synchronisation.
  */
 void TZXCompat_noInterrupts() {
-  // Not necessary as timer is in same thread as the main zxtape thread
+  // Lock the mutex
+  pthread_mutex_lock(&g_interruptMutex);
 }
 
 /**
  * Re-enable interrupts
+ *
+ * The timer is not on an interrupt, but is a separate thread. Use a mutex for synchronisation.
  */
 void TZXCompat_interrupts() {
-  // Not necessary as timer is in same thread as the main zxtape thread
+  // Unlock the mutex
+  pthread_mutex_unlock(&g_interruptMutex);
+
+  // Allow other threads to run when interrupt is released
+  // sched_yield();
 }
 
 //
@@ -304,27 +316,44 @@ void TZXCompat_interrupts() {
 //
 
 unsigned char TZXCompat_fileOpen(void *dir, unsigned int index, unsigned oflag) {
-  // TODO: Implement
-  // char* pF = TZX_fileName; < Must be full path
+  const char *pF = TZX_fileName;
+
+  g_pFile = fopen(pF, "rb");
+  if (g_pFile == NULL) {
+    TZX_filesize = 0;
+    return 0;
+  }
 
   // Must set TZX_filesize
+  fseek(g_pFile, 0, SEEK_END);
+  TZX_filesize = ftell(g_pFile);
+  fseek(g_pFile, 0, SEEK_SET);
 
   return 1;
 }
 
 void TZXCompat_fileClose() {
-  // TODO: Implement
+  if (g_pFile != NULL) {
+    fclose(g_pFile);
+    g_pFile = NULL;
+  }
 }
 
 int TZXCompat_fileRead(void *buf, unsigned long count) {
-  // TODO: Implement
+  if (g_pFile != NULL) {
+    return fread(buf, 1, count, g_pFile);
+  }
+
   return 0;
 }
 
 unsigned char TZXCompat_fileSeekSet(unsigned long long pos) {
-  // TODO: Implement
+  if (g_pFile != NULL) {
+    fseek(g_pFile, pos, SEEK_SET);
+    return 1;
+  }
 
-  return 1;
+  return 0;
 }
 
 //

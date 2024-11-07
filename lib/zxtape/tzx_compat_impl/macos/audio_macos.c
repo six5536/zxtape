@@ -24,7 +24,14 @@
 //
 
 /* Exported global variables */
-uint32 AudioPlaybackRate = 64000;  // Hz
+// uint32 AudioPlaybackRate = 64000;  // Hz
+// ZX Spectrum runs at 35kHz, a direct multiple makes sense, 35kHz, 70kHz?
+// 1/3'500'000 * 855(T-States) / 14 samples = 57113 kHz
+// Some fast-loaders will use a shorter number of T-States
+// - these will be difficult (higher playback rate will be needed)
+// Therefore, use twice this rate
+// uint32 AudioPlaybackRate = 70000;  // Hz
+uint32 AudioPlaybackRate = 57113;  // Hz
 uint32 AudioIntervalMs = 128;      // ms
 
 /* Local variables */
@@ -32,7 +39,7 @@ static bool SettingsMute = true;
 static bool SettingsSixteenBitSound = false;
 static bool SettingsStereo = false;
 
-static SInt32 macSoundVolume = 80;  // %
+static SInt32 macSoundVolume = 100;  // %
 
 static AUGraph agraph;
 static AUNode outNode;

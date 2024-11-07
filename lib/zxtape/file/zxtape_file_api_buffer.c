@@ -8,9 +8,9 @@
 //
 
 /* Local global variables */
-static u8 *g_pBuffer = NULL;   // Pointer to buffer
-static u64 g_nBufferSize = 0;  // Buffer size
-static u64 g_nSeekIndex = 0;   // Current file seek position
+static const u8 *g_pBuffer = NULL;  // Pointer to buffer
+static u64 g_nBufferSize = 0;       // Buffer size
+static u64 g_nSeekIndex = 0;        // Current file seek position
 
 /* Forward declarations */
 static bool open(TZX_FILETYPE *dir, u32 index, TZX_oflag_t oflag);

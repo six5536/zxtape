@@ -10,7 +10,8 @@
 #include "./games/starquake.h"
 
 #define SLEEP_WHEN_IDLE_NS 250ull * NSEC_PER_MSEC    // 250ms
-#define SLEEP_WHEN_PLAYING_NS 100ul * NSEC_PER_USEC  // 50us
+#define SLEEP_WHEN_PLAYING_NS 100ul * NSEC_PER_USEC  // 100us
+// #define SLEEP_WHEN_PLAYING_NS 100ul * NSEC_PER_USEC  // 100us
 
 /* Forward declarations */
 static void createTapeThread(pthread_t thread, ZXTAPE_HANDLE_T* pZxTape);
@@ -35,7 +36,16 @@ int main(int argc, char* argv[]) {
   createTapeThread(zxtapeThread, pZxTape);
 
   // Load a buffer into the ZXTape instance
-  zxtape_loadBuffer(pZxTape, "starquake.tzx", Starquake, sizeof(Starquake));
+  // zxtape_loadBuffer(pZxTape, "starquake.tzx", Starquake, sizeof(Starquake));
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/Jetpac/Jetpac.tap");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/Back2Skool/BackToSkool.tzx");
+  zxtape_loadFile(pZxTape,
+                  "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+                  "ZX\ Spectrum/Games/Arkanoid2/Arkanoid2-48K.tzx");
 
   // Play the ZXTape instance
   zxtape_playPause(pZxTape);
@@ -97,10 +107,6 @@ static void* tapeThread(void* arg) {
   // setPriorityRealtimeAudio();
 
   while (g_bZxtapeThreadRunning) {
-    zxtape_run(pZxTape);
-
-    if (!g_bZxtapeThreadRunning) break;  // Check if the thread is still running
-
     // Different sleep rate for stopped / playing
     time_t sleepTimeNs = zxtape_isPlaying(pZxTape) ? SLEEP_WHEN_PLAYING_NS : SLEEP_WHEN_IDLE_NS;
 
@@ -109,6 +115,10 @@ static void* tapeThread(void* arg) {
     ts.tv_sec = sleepTimeNs / NSEC_PER_SEC;
     ts.tv_nsec = sleepTimeNs % NSEC_PER_SEC;
     nanosleep(&ts, NULL);
+
+    if (!g_bZxtapeThreadRunning) break;  // Check if the thread is still running
+
+    zxtape_run(pZxTape, sleepTimeNs / NSEC_PER_MSEC);
   }
 
   return (void*)0;

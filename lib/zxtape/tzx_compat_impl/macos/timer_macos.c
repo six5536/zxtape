@@ -6,7 +6,7 @@
  * https://gist.github.com/lundman/731d0d7d09eca072cd1224adb00d9b9e
  */
 
-#include "thread_timer_macos.h"
+#include "timer_macos.h"
 
 #include <assert.h>
 #include <mach/boolean.h>
@@ -156,9 +156,6 @@ static void _timer_create_thread(pthread_t thread, macos_timer_t tim) {
 
   // Join the thread - no, as we want to run the timer in the background
   // pthread_join(thread, NULL);
-
-  // Set the thread priority for realtime audio
-  // setPriorityRealtimeAudio();
 }
 
 static void _timer_destroy_thread(pthread_t thread, macos_timer_t tim) {
@@ -180,6 +177,9 @@ static void *_timer_thread(void *arg) {
   struct macos_timer *tim = (struct macos_timer *)arg;
   int res = 0;
   union sigval sv;
+
+  // Set the thread priority for realtime audio
+  // setPriorityRealtimeAudio();
 
   while (tim->threadRunning) {
     // Wait for the start semaphore

@@ -82,7 +82,7 @@ bool zxtape_isRewound(ZXTAPE_HANDLE_T *pInstance);
 bool zxtape_isStarted(ZXTAPE_HANDLE_T *pInstance);
 bool zxtape_isPlaying(ZXTAPE_HANDLE_T *pInstance);
 bool zxtape_isPaused(ZXTAPE_HANDLE_T *pInstance);
-void zxtape_run(ZXTAPE_HANDLE_T *pInstance);
+void zxtape_run(ZXTAPE_HANDLE_T *pInstance, unsigned nIntervalMs);
 
 #ifdef __cplusplus
 }
