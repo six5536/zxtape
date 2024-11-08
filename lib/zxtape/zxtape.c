@@ -404,19 +404,14 @@ static void loopPlayback(ZXTAPE_T *pZxTape) {
  * Handle control loop
  */
 static void loopControl(ZXTAPE_T *pZxTape, unsigned nIntervalMs) {
-  // const unsigned lastTimerMs = TZXCompat_getTickMs();
-  // const unsigned elapsedMs = (lastTimerMs - pZxTape->nlastTimerMs);
+  const unsigned lastTimerMs = TZXCompat_getTickMs();
+  const unsigned elapsedMs = (lastTimerMs - pZxTape->nlastTimerMs);
 
-  // Only run every 100ms
-  // if (elapsedMs < ZX_TAPE_CONTROL_UPDATE_MS) return;
-  // zxtape_log_debug("loop_control: %d", elapsedMs);
-
-  // pZxTape->nlastTimerMs = lastTimerMs;
-
-  const unsigned elapsedMs = pZxTape->nlastTimerMs + nIntervalMs;
   // Only run every 100ms
   if (elapsedMs < ZX_TAPE_CONTROL_UPDATE_MS) return;
-  pZxTape->nlastTimerMs = 0;
+  // zxtape_log_debug("loop_control: %d", elapsedMs);
+
+  pZxTape->nlastTimerMs = lastTimerMs;
 
   // Handle Play / pause button
   if (checkButtonPlayPause(pZxTape)) {
@@ -472,6 +467,7 @@ static void playFile(ZXTAPE_T *pZxTape) {
   TZXCompat_timerInitialize();
 
   TZXPlay();
+
   pZxTape->bRunning = true;
 
   if (TZX_PauseAtStart) {

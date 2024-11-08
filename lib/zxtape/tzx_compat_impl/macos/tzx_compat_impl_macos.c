@@ -15,8 +15,8 @@
 // - https://chromium.googlesource.com/chromium/src/+/refs/heads/main/base/threading/platform_thread_apple.mm <== GOOD
 
 #define AUDIO_BUFFER_MULTIPLE 8
-#define AUDIO_BUFFER_LENGTH 4096 * 2
-#define AUDIO_BUFFER_EQUALIBRIUM_PERCENT 20
+#define AUDIO_BUFFER_LENGTH 1024 * 64  // 64k buffer
+#define AUDIO_BUFFER_EQUALIBRIUM_PERCENT 1
 #define TIMER_FIXED_OFFSET_US 50
 #define TIMER_VARAIBLE_OFFSET_US 150
 
@@ -170,6 +170,13 @@ void TZXCompat_timerStart(unsigned long periodUs) {
   // Stop the timer if it is running
   TZXCompat_timerStop();
 
+  // If the period is the EOF period, then stop the tape
+  if (periodUs == TZXCompat_EOF_PERIOD) {
+    // Stop the tape
+    TZX_stopFile();
+    return;
+  }
+
   // Calculate the period in audio samples
   uint32_t periodSamples = ((uint64_t)periodUs * AudioPlaybackRate / 1000000ull);
 
@@ -293,7 +300,7 @@ void TZXCompat_delay(unsigned long ms) {
  *
  * The timer is not on an interrupt, but is a separate thread. Use a mutex for synchronisation.
  */
-void TZXCompat_noInterrupts() {
+inline void TZXCompat_noInterrupts() {
   // Lock the mutex
   pthread_mutex_lock(&g_interruptMutex);
 }
@@ -303,7 +310,7 @@ void TZXCompat_noInterrupts() {
  *
  * The timer is not on an interrupt, but is a separate thread. Use a mutex for synchronisation.
  */
-void TZXCompat_interrupts() {
+inline void TZXCompat_interrupts() {
   // Unlock the mutex
   pthread_mutex_unlock(&g_interruptMutex);
 

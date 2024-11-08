@@ -10,7 +10,7 @@
 #include "./games/starquake.h"
 
 #define SLEEP_WHEN_IDLE_NS 250ull * NSEC_PER_MSEC    // 250ms
-#define SLEEP_WHEN_PLAYING_NS 100ul * NSEC_PER_USEC  // 100us
+#define SLEEP_WHEN_PLAYING_NS 250ul * NSEC_PER_MSEC  // 100us
 // #define SLEEP_WHEN_PLAYING_NS 100ul * NSEC_PER_USEC  // 100us
 
 /* Forward declarations */
@@ -43,9 +43,12 @@ int main(int argc, char* argv[]) {
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/Back2Skool/BackToSkool.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/Arkanoid2/Arkanoid2-48K.tzx");
   zxtape_loadFile(pZxTape,
                   "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
-                  "ZX\ Spectrum/Games/Arkanoid2/Arkanoid2-48K.tzx");
+                  "ZX\ Spectrum/Games/Cobra/Cobra.tzx");
 
   // Play the ZXTape instance
   zxtape_playPause(pZxTape);

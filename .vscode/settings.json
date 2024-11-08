@@ -18,7 +18,15 @@
     "type_traits": "cpp",
     "utility": "cpp",
     "__config": "cpp",
-    "**/*.h": "cpp"
+    "**/*.h": "cpp",
+    "__bit_reference": "cpp",
+    "__node_handle": "cpp",
+    "bitset": "cpp",
+    "deque": "cpp",
+    "limits": "cpp",
+    "locale": "cpp",
+    "ratio": "cpp",
+    "vector": "cpp"
   },
   "cmake.useCMakePresets": "always",
   "cmake.options.statusBarVisibility": "visible",

@@ -10,10 +10,13 @@
 #include "../lib/zxtape/tzx_compat/circle/tzx_compat_circle_os_headers.h"
 #endif  // __ZX_TAPE_CIRCLE__
 
-// TZX State
+#define TZXCompat_EOF_PERIOD 32767
+
+// TZX Required State and functions
 extern bool TZX_pauseOn;     // Pause state
 extern char TZX_fileName[];  // Current filename
 extern size_t TZX_filesize;  // Current file size
+extern void TZX_stopFile();
 
 // TZX Compat APIs
 void TZXCompat_create(void);

@@ -16,6 +16,9 @@
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 #pragma GCC diagnostic ignored "-Warray-bounds"
 
+// Special period written to the playback buffer to indicate the end of the file
+#define TZX_EOF_PERIOD 32767
+
 
 // Private function declarations
 void clearBuffer();
@@ -127,7 +130,11 @@ void TZXPlay() {
   }
 
 #ifdef __ZX_TAPE__
-  Timer.setPeriod(1000); // 1msec                   //set 1ms wait at start of a file (to fill initial buffer).
+  // Call TZXLoop once to fill the initial buffer
+  TZXLoop();
+
+  pos = buffsize;                             // Start at the end of the buffer, so as to overflow to the initial buffer
+  Timer.setPeriod(1000); // 1msec                   // set 1ms wait at start of a file (to fill initial buffer).
 #else
   Timer.setPeriod(1000);                     //set 1ms wait at start of a file.
 #endif // __ZX_TAPE__
@@ -199,6 +206,43 @@ void TZXPause() {
 
 
 void TZXLoop() {
+#ifdef __ZX_TAPE__
+    // Keep filling until full, or until we reach the end of the file
+    if (currentPeriod != TZX_EOF_PERIOD) {
+        noInterrupts();                           //Pause interrupts to prevent var reads and copy values out
+        copybuff = morebuff;
+        morebuff = LOW;
+        isStopped = pauseOn;
+        interrupts();
+        if(copybuff==HIGH) {
+            btemppos=0;                             //Buffer has swapped, start from the beginning of the new page
+            copybuff=LOW;
+        }
+
+        while (btemppos<=buffsize) {
+            TZXProcess();                           //generate the next period to add to the buffer
+            if(currentPeriod>0) {
+                noInterrupts();                       //Pause interrupts while we add a period to the buffer
+                wbuffer[btemppos][workingBuffer ^ 1] = currentPeriod;   //add period to the buffer
+                interrupts();
+                btemppos+=1;
+            }
+        }
+    }
+
+    if ((pauseOn == 0)&& (currpct<100)) lcdTime();
+    newpct=(100 * bytesRead)/filesize;
+    if (currpct == 100){
+        currpct = 0;
+        Counter2();
+    }
+    if ((newpct >currpct)&& (newpct % 1 == 0)) {
+
+        Counter2();
+
+        currpct = newpct;
+    }
+#else // __ZX_TAPE__
     noInterrupts();                           //Pause interrupts to prevent var reads and copy values out
     copybuff = morebuff;
     morebuff = LOW;
@@ -233,6 +277,7 @@ void TZXLoop() {
             currpct = newpct;
          }
     }
+#endif // __ZX_TAPE__
 }
 
 void TZXSetup() {
@@ -451,23 +496,24 @@ void TZXProcess() {
           break;
 
         case IDCHUNKEOF:
-        if(!count==0) {
 #ifdef __ZX_TAPE__
-            // Pause for a long time at EOF
-            // 32767 * 1000 * 100 = 3276.7 seconds ~= 1hr
-            currentPeriod = 32767;
-            bitSet(currentPeriod, 15);
+        if(!count==0) {
+          // Pause for a long time at EOF
+          // 32767 * 1000 * 100 = 3276.7 seconds ~= 1hr (TZXCompat_EOF_PERIOD)
+          currentPeriod = TZX_EOF_PERIOD;
+        }
 #else
+        if(!count==0) {
             //currentPeriod = 32767;
             currentPeriod = 10;
             bitSet(currentPeriod, 15); //bitSet(currentPeriod, 12);
-#endif // __ZX_TAPE__
             count += -1;
           } else {
             bytesRead+=bytesToRead;
             stopFile();
           return;
           }
+#endif // __ZX_TAPE__
         break;
 
         default:
@@ -1083,22 +1129,23 @@ void TZXProcess() {
 
         case EOF:
           //Handle end of file
-          if(!count==0) {
 #ifdef __ZX_TAPE__
+          if(!count==0) {
             // Pause for a long time at EOF
-            // 32767 * 1000 * 100 = 3276.7 seconds ~= 1hr
-            currentPeriod = 32767;
-            bitSet(currentPeriod, 15);
+            // 32767 * 1000 * 100 = 3276.7 seconds ~= 1hr (TZXCompat_EOF_PERIOD)
+            currentPeriod = TZX_EOF_PERIOD;
+          }
 #else
+          if(!count==0) {
             currentPeriod = 32767;
             //currentPeriod = 2000;
             //bitSet(currentPeriod, 15); bitSet(currentPeriod, 12);
-#endif
             count += -1;
           } else {
             stopFile();
             return;
           }
+#endif
         break;
 
         default:
