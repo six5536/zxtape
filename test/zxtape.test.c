@@ -46,9 +46,22 @@ int main(int argc, char* argv[]) {
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/Arkanoid2/Arkanoid2-48K.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/Cobra/Cobra.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/MoonStrike/MoonStrike-48K.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/"
+  //                 "Thrust2/Thrust2.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/MoonCresta/MoonCresta.tzx");
   zxtape_loadFile(pZxTape,
                   "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
-                  "ZX\ Spectrum/Games/Cobra/Cobra.tzx");
+                  "ZX\ Spectrum/Games/NewZealandStory/New\ Zealand\ Story\[Speedlock\ 7\].tzx");
 
   // Play the ZXTape instance
   zxtape_playPause(pZxTape);
