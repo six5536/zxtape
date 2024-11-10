@@ -100,6 +100,7 @@ extern unsigned char TZX_currpct;  // Current percentage of file played (in file
 extern void TZXCompat_create(void);
 extern void TZXCompat_destroy(void);
 extern void TZXCompat_timerStart(unsigned long periodUs);
+extern void TZXCompat_buffer(unsigned long periodUs);
 extern void TZXCompat_delay(unsigned long time);
 extern void TZXCompat_noInterrupts();                  // Disable interrupts
 extern void TZXCompat_interrupts();                    // Enable interrupts

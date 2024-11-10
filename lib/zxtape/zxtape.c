@@ -394,9 +394,6 @@ static void loopPlayback(ZXTAPE_T *pZxTape) {
 
     // TZXLoop only runs if a file is playing, and keeps the buffer full.
     TZXLoop();
-
-    // Hacked in here for testing
-    // wave();
   }
 }
 
@@ -441,10 +438,10 @@ static void loopControl(ZXTAPE_T *pZxTape, unsigned nIntervalMs) {
 
   // Handle end of playback (allowing buffer to empty)
   if (pZxTape->bEndPlayback) {
-    if (pZxTape->nEndPlaybackDelay <= 0) {
-      // End of playback delay has expired, buffer should be empty, so stop playing
-      stopFile(pZxTape);
-    }
+    // if (pZxTape->nEndPlaybackDelay <= 0) { // No longer required as buffer should be empty (should be poss on PI too)
+    // End of playback delay has expired, buffer should be empty, so stop playing
+    stopFile(pZxTape);
+    // }
     pZxTape->nEndPlaybackDelay -= elapsedMs;
   }
 }

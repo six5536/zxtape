@@ -49,7 +49,7 @@
 #define pinMode(pin, mode)      TZX_pinMode(pin, mode)
 #define LowWrite                TZXCompat_setAudioLow
 #define HighWrite               TZXCompat_setAudioHigh
-#define wave                    TZXCompat_onTimer
+#define wave                    TZXCompat_waveOrBuffer
 #define stopFile                TZX_stopFile
 #define lcdTime                 TZX_lcdTime
 #define Counter2                TZX_Counter2

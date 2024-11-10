@@ -59,9 +59,18 @@ int main(int argc, char* argv[]) {
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/MoonCresta/MoonCresta.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/NewZealandStory/New\ Zealand\ Story\[Speedlock\ 7\].tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/ScoobyDoo/ScoobyDoo.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/Saboteur/Saboteur.tzx");
   zxtape_loadFile(pZxTape,
                   "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
-                  "ZX\ Spectrum/Games/NewZealandStory/New\ Zealand\ Story\[Speedlock\ 7\].tzx");
+                  "ZX\ Spectrum/Games/Uridium/Uridium.tzx");
 
   // Play the ZXTape instance
   zxtape_playPause(pZxTape);

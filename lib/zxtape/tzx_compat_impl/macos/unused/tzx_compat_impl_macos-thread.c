@@ -115,7 +115,7 @@ void TZXCompat_timerStop(void) {
 
 static void onTimer() {
   // Fire the timer event in the TZXCompat layer
-  TZXCompat_onTimer();
+  TZXCompat_waveOrBuffer();
 }
 
 unsigned int TZXCompat_getTickMs(void) {
@@ -130,7 +130,7 @@ unsigned int TZXCompat_getTickMs(void) {
 }
 
 // TODO - not to be implemetned but to be called on timer interrupt
-// void TZXCompat_onTimer(void) {
+// void TZXCompat_waveOrBuffer(void) {
 //   // Function to call on Timer interrupt
 // }
 

@@ -1566,16 +1566,150 @@ void writeHeader() {
   }
 }  // End writeHeader()
 
-void wave() {
+void wave(bool bBuffer, unsigned int nBufferLen, unsigned long nBufferPeriodUs) {
+#ifdef __ZX_TAPE__
+  unsigned int bufferedCount = 0;
+
+  while (1) {
+    if (bBuffer) {
+      if (isStopped) {
+        // If stopped, break out of the loop
+        Timer.setPeriod(1000000);
+        break;
+      }
+      // If buffered enough, or stopped, set the timer for the next fill and break out of the loop
+      if (bufferedCount >= nBufferLen) {
+        Timer.setPeriod(nBufferPeriodUs);
+        break;
+      }
+    }
+
+    word workingPeriod = wbuffer[pos][workingBuffer];
+    byte pauseFlipBit = false;
+    unsigned long newTime=1;
+    intError = false;
+    if(isStopped==0 && workingPeriod >= 1)
+    {
+        if bitRead(workingPeriod, 15)
+        {
+          //If bit 15 of the current period is set we're about to run a pause
+          //Pauses start with a 1.5ms where the output is untouched after which the output is set LOW
+          //Pause block periods are stored in milliseconds not microseconds
+          isPauseBlock = true;
+          bitClear(workingPeriod,15);         //Clear pause block flag
+          pinState = !pinState;
+          pauseFlipBit = true;
+          wasPauseBlock = true;
+        } else {
+          if(workingPeriod >= 1 && wasPauseBlock==false) {
+            pinState = !pinState;
+          } else if (wasPauseBlock==true && isPauseBlock==false) {
+            wasPauseBlock=false;
+          }
+          //if (wasPauseBlock==true && isPauseBlock==false) wasPauseBlock=false;
+        }
+
+        if (ID15switch == 1){
+          if (bitRead(workingPeriod, 14)== 0)
+          {
+            //pinState = !pinState;
+            if (pinState == LOW)
+            {
+              LowWrite();
+            }
+            else
+            {
+              HighWrite();
+            }
+          }
+          else
+          {
+            if (bitRead(workingPeriod, 13) == 0)
+            {
+              LowWrite();
+            }
+            else
+            {
+              HighWrite();
+              bitClear(workingPeriod,13);
+            }
+            bitClear(workingPeriod,14);         //Clear ID15 flag
+            workingPeriod = TstatesperSample;
+          }
+        }
+        else {
+          //pinState = !pinState;
+          if(pinState==LOW)
+          {
+            LowWrite();
+          }
+          else
+          {
+            HighWrite();
+          }
+        }
+
+        if(pauseFlipBit==true) {
+          newTime = 1500;                     //Set 1.5ms initial pause block
+          //pinState = LOW;                     //Set next pinstate LOW
+          if (!FlipPolarity) {
+            pinState = LOW;
+          } else {
+            pinState = HIGH;
+          }
+          wbuffer[pos][workingBuffer] = workingPeriod - 1;  //reduce pause by 1ms as we've already pause for 1.5ms
+          pauseFlipBit=false;
+        } else {
+          if(isPauseBlock==true) {
+            newTime = long(workingPeriod)*1000; //Set pause length in microseconds
+            isPauseBlock = false;
+          } else {
+            newTime = workingPeriod;          //After all that, if it's not a pause block set the pulse period
+          }
+          pos += 1;
+          if(pos > buffsize)                  //Swap buffer pages if we've reached the end
+          {
+            pos = 0;
+            workingBuffer^=1;
+            morebuff = HIGH;                  //Request more data to fill inactive page
+          }
+      }
+    } else if(workingPeriod <= 1 && isStopped==0) {
+      newTime = 1000;                         //Just in case we have a 0 in the buffer
+      pos += 1;
+      if(pos > buffsize) {
+        pos = 0;
+        workingBuffer ^= 1;
+        morebuff = HIGH;
+      }
+    } else {
+      newTime = 1000000;                         //Just in case we have a 0 in the buffer
+    }
+
+    unsigned long nextPeriod = newTime; //  + 4;
+    if (nextPeriod <= 0) nextPeriod = 1;
+
+
+    if (bBuffer) {
+      // If in buffer mode and buffer filled, break out of the loop
+      TZXCompat_buffer(nextPeriod);
+
+      // Increment the buffered count
+      bufferedCount++;
+    } else {
+      Timer.setPeriod(nextPeriod);    // Finally set the next pulse length
+
+      // If not in buffer mode, break out of the loop (don't loop)
+      if (!bBuffer) break;
+    }
+  }
+#else
   //ISR Output routine
   //unsigned long fudgeTime = micros();         //fudgeTime is used to reduce length of the next period by the time taken to process the ISR
   word workingPeriod = wbuffer[pos][workingBuffer];
   byte pauseFlipBit = false;
   unsigned long newTime=1;
   intError = false;
-
-  // Log("wave: isStopped=%d pos=%d, workingBuffer=%d, workingPeriod=%d", isStopped, pos, workingBuffer, workingPeriod);
-
   if(isStopped==0 && workingPeriod >= 1)
   {
       if bitRead(workingPeriod, 15)
@@ -1673,14 +1807,6 @@ void wave() {
   } else {
     newTime = 1000000;                         //Just in case we have a 0 in the buffer
   }
-
-#ifdef __ZX_TAPE__
-// TODO - call a function to get the fudge time
-  // unsigned long nextPeriod = newTime - 19;
-  unsigned long nextPeriod = newTime; //  + 4;
-  if (nextPeriod <= 0) nextPeriod = 1;
-  Timer.setPeriod(nextPeriod);    //Finally set the next pulse length
-#else
   //newTime += 12;
   //fudgeTime = micros() - fudgeTime;         //Compensate for stupidly long ISR
   //Timer.setPeriod(newTime - fudgeTime);    //Finally set the next pulse length

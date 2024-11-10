@@ -27,7 +27,8 @@ void TZXCompat_stop(void);
 void TZXCompat_timerInitialize(void);
 void TZXCompat_timerStart(unsigned long periodUs);
 void TZXCompat_timerStop(void);
-extern void TZXCompat_onTimer(void);  // Function to call on Timer interrupt
+extern void TZXCompat_waveOrBuffer(bool bBuffer, unsigned int nBufferLen,
+                                   unsigned long nBufferPeriodUs);  // Function to call on Timer interrupt
 
 void TZXCompat_setAudioLow(void);   // Set the GPIO output pin low
 void TZXCompat_setAudioHigh(void);  // Set the GPIO output pin high
