@@ -31,6 +31,8 @@ add_library(
   lib/zxtape/file/zxtape_file_api_dummy.c
   lib/zxtape/file/zxtape_file_api_buffer.c
   lib/zxtape/file/zxtape_file_api_file.c
+  lib/zxtape/info/zxtape_info.c
+  lib/zxtape/utils/zxtape_utils.c
   lib/zxtape/tzx_compat/tzx_compat.c
   lib/zxtape/tzx/tzx.c
 )

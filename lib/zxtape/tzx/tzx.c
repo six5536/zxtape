@@ -21,37 +21,130 @@
 
 
 // Private function declarations
-void clearBuffer();
-word TickToUs(word ticks);
-void checkForEXT (char *filename);
-bool checkForTap(char *filename);
-bool checkForP(char *filename);
-bool checkForO(char *filename);
-bool checkForAY(char *filename);
-bool checkForUEF(char *filename);
-void TZXProcess();  // File processing loop
-void StandardBlock();
-void PureToneBlock();
-void PulseSequenceBlock();
-void PureDataBlock();
-void writeData4B();
-void DirectRecording();
-void ZX81FilenameBlock();
-void ZX8081DataBlock();
-void ZX80ByteWrite();
-void writeData();
-void writeHeader();
-int ReadByte(unsigned long pos);
-int ReadWord(unsigned long pos);
-int ReadLong(unsigned long pos);
-int ReadDword(unsigned long pos);
-void ReadTZXHeader();
-void ReadAYHeader();
-void writeSampleData();
+static void clearBuffer();
+static word TickToUs(word ticks);
+static void checkForEXT (char *filename);
+static bool checkForTap(char *filename);
+static bool checkForP(char *filename);
+static bool checkForO(char *filename);
+static bool checkForAY(char *filename);
+static bool checkForUEF(char *filename);
+static void TZXProcess();  // File processing loop
+static void StandardBlock();
+static void PureToneBlock();
+static void PulseSequenceBlock();
+static void PureDataBlock();
+static void writeData4B();
+static void DirectRecording();
+static void ZX81FilenameBlock();
+static void ZX8081DataBlock();
+static void ZX80ByteWrite();
+static void writeData();
+static void writeHeader();
+static int ReadByte(unsigned long pos);
+static int ReadWord(unsigned long pos);
+static int ReadLong(unsigned long pos);
+static int ReadDword(unsigned long pos);
+static void ReadTZXHeader();
+static void ReadAYHeader();
+static void writeSampleData();
+
+/* Exported variables */
+PROGMEM const char TZXTape[7] = {'Z','X','T','a','p','e','!'};
+PROGMEM const char TAPcheck[7] = {'T','A','P','t','a','p','.'};
+PROGMEM const char ZX81Filename[9] = {'T','Z','X','D','U','I','N','O',0x9D};
+PROGMEM const char AYFile[8] = {'Z','X','A','Y','E','M','U','L'}; // added additional AY file header check
+PROGMEM const char TAPHdr[20] = {0x0,0x0,0x3,'Z','X','A','Y','F','i','l','e',' ',' ',0x1A,0xB,0x0,0xC0,0x0,0x80,0x6E}; //
+//const char TAPHdr[24] = {0x13,0x0,0x0,0x3,' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',0x1A,0xB,0x0,0xC0,0x0,0x80,0x52,0x1C,0xB,0xFF};
+bool PauseAtStart = false;
+
+/* Local variables */
+//Keep track of which ID, Task, and Block Task we're dealing with
+byte currentID = 0;
+byte currentTask = 0;
+byte currentBlockTask = 0;
+
+//Temporarily store for a pulse period before loading it into the buffer.
+word currentPeriod=1;
+
+//ISR Variables
+volatile unsigned int pos = 0; // Originally byte; had to change to support buffers > 255 bytes
+volatile word wbuffer[buffsize+1][2];
+volatile byte morebuff = HIGH;
+volatile byte workingBuffer=0;
+volatile byte isStopped=false;
+volatile byte pinState=LOW;
+volatile byte isPauseBlock = false;
+volatile byte wasPauseBlock = false;
+volatile byte intError = false;
+
+//Main Variables
+byte AYPASS = 0;
+byte hdrptr = 0;
+byte blkchksum = 0;
+word ayblklen = 0;
+unsigned int btemppos = 0; // Originally byte; had to change to support buffers > 255 bytes
+byte copybuff = LOW;
+unsigned long bytesRead=0;
+unsigned long bytesToRead=0;
+byte pulsesCountByte=0;
+word pilotPulses=0;
+word pilotLength=0;
+word sync1Length=0;
+word sync2Length=0;
+word zeroPulse=0;
+word onePulse=0;
+word TstatesperSample=0;
+byte usedBitsInLastByte=8;
+word loopCount=0;
+byte seqPulses=0;
+byte input[11];
+
+byte forcePause0=0;
+byte firstBlockPause = false;
+unsigned long loopStart=0;
+word pauseLength=0;
+word temppause=0;
+byte outByte=0;
+word outWord=0;
+unsigned long outLong=0;
+byte count=128;
+volatile byte currentBit=0;
+volatile byte currentByte=0;
+volatile byte currentChar=0;
+byte pass=0;
+unsigned long debugCount=0;
+byte EndOfFile=false;
+byte lastByte;
+//byte firstTime=true;
+
+byte currpct = 100;
+byte newpct = 0;
+byte spinpos = 0;
+unsigned long timeDiff2 = 0;
+unsigned int lcdsegs = 0;
+unsigned int offset = 2;
+
+int TSXspeedup = 1;
+int BAUDRATE = 1200;
+
+word chunkID = 0;
+bool uefTurboMode = false;
+float outFloat;
+byte UEFPASS = 0;
+byte passforZero=2;
+byte passforOne=4;
+
+bool FlipPolarity = false;
+byte ID15switch = 0;
+
+byte wibble = 1;
+byte parity = 0 ;        //0:NoParity 1:ParityOdd 2:ParityEven (default:0)
+byte bitChecksum = 0;     // 0:Even 1:Odd number of one bits
 
 #endif // __ZX_TAPE__
 
-void clearBuffer()
+static void clearBuffer()
 {
 
   for(int i=0;i<=buffsize;i++)
@@ -61,12 +154,12 @@ void clearBuffer()
   }
 }
 
-word TickToUs(word ticks) {
+static word TickToUs(word ticks) {
   return (word) ((((float) ticks)/3.5)+0.5);
 }
 
 
-void checkForEXT (char *filename) {
+static void checkForEXT (char *filename) {
   if(checkForTap(filename)) {                 //Check for Tap File.  As these have no header we can skip straight to playing data
     currentTask=PROCESSID;
     currentID=TAP;
@@ -141,7 +234,7 @@ void TZXPlay() {
 
 }
 
-bool checkForTap(char *filename) {
+static bool checkForTap(char *filename) {
   //Check for TAP file extensions as these have no header
   byte len = strlen(filename);
   if(strstr_P(strlwr(filename + (len-4)), PSTR(".tap"))) {
@@ -150,7 +243,7 @@ bool checkForTap(char *filename) {
   return false;
 }
 
-bool checkForP(char *filename) {
+static bool checkForP(char *filename) {
   //Check for TAP file extensions as these have no header
   byte len = strlen(filename);
   if(strstr_P(strlwr(filename + (len-2)), PSTR(".p"))) {
@@ -159,7 +252,7 @@ bool checkForP(char *filename) {
   return false;
 }
 
-bool checkForO(char *filename) {
+static bool checkForO(char *filename) {
   //Check for TAP file extensions as these have no header
   byte len = strlen(filename);
   if(strstr_P(strlwr(filename + (len-2)), PSTR(".o"))) {
@@ -168,7 +261,7 @@ bool checkForO(char *filename) {
   return false;
 }
 
-bool checkForAY(char *filename) {
+static bool checkForAY(char *filename) {
   //Check for AY file extensions as these have no header
   byte len = strlen(filename);
   if(strstr_P(strlwr(filename + (len-3)), PSTR(".ay"))) {
@@ -177,7 +270,7 @@ bool checkForAY(char *filename) {
   return false;
 }
 
-bool checkForUEF(char *filename) {
+static bool checkForUEF(char *filename) {
   //Serial.println(F("checkForUEF"));
   byte len = strlen(filename);
   if(strstr_P(strlwr(filename + (len-4)), PSTR(".uef"))) {
@@ -288,7 +381,7 @@ void TZXSetup() {
     Timer.initialize();
 }
 
-void TZXProcess() {
+static void TZXProcess() {
     byte r = 0;
     currentPeriod = 0;
     if(currentTask == GETFILEHEADER) {
@@ -1199,7 +1292,7 @@ void TZXProcess() {
     }
 }
 
-void StandardBlock() {
+static void StandardBlock() {
   //Standard Block Playback
   switch (currentBlockTask) {
     case PILOT:
@@ -1253,7 +1346,7 @@ void StandardBlock() {
 }
 
 
-void PureToneBlock() {
+static void PureToneBlock() {
   //Pure Tone Block - Long string of pulses with the same length
   currentPeriod = pilotLength;
   pilotPulses += -1;
@@ -1262,7 +1355,7 @@ void PureToneBlock() {
   }
 }
 
-void PulseSequenceBlock() {
+static void PulseSequenceBlock() {
   //Pulse Sequence Block - String of pulses each with a different length
   //Mainly used in speedload blocks
   byte r=0;
@@ -1275,7 +1368,7 @@ void PulseSequenceBlock() {
   }
 }
 
-void PureDataBlock() {
+static void PureDataBlock() {
   //Pure Data Block - Data & pause only, no header, sync
   switch(currentBlockTask) {
     case DATA:
@@ -1291,7 +1384,7 @@ void PureDataBlock() {
 
 
 
-void writeData4B() {
+static void writeData4B() {
   //Convert byte (4B Block) from file into string of pulses.  One pulse per pass
   byte r;
   byte dataBit;
@@ -1352,7 +1445,7 @@ void writeData4B() {
 
 }
 
-void DirectRecording() {
+static void DirectRecording() {
   //Direct Recording - Output bits based on specified sample rate (Ticks per clock) either 44.1KHz or 22.05
   switch(currentBlockTask) {
     case DATA:
@@ -1366,7 +1459,7 @@ void DirectRecording() {
   }
 }
 
-void ZX81FilenameBlock() {
+static void ZX81FilenameBlock() {
   //output ZX81 filename data  byte r;
   if(currentBit==0) {                         //Check for byte end/first byte
       //currentByte=ZX81Filename[currentChar];
@@ -1397,7 +1490,7 @@ void ZX81FilenameBlock() {
   ZX80ByteWrite();
 }
 
-void ZX8081DataBlock() {
+static void ZX8081DataBlock() {
   byte r;
   if(currentBit==0) {                         //Check for byte end/first byte
     if(r=ReadByte(bytesRead)==1) {            //Read in a byte
@@ -1435,7 +1528,7 @@ void ZX8081DataBlock() {
 }
 
 
-void ZX80ByteWrite() {
+static void ZX80ByteWrite() {
   if (uefTurboMode){
     currentPeriod = ZX80TURBOPULSE;
   if(pass==1) {
@@ -1465,7 +1558,7 @@ void ZX80ByteWrite() {
 
 
 
-void writeData() {
+static void writeData() {
   //Convert byte from file into string of pulses.  One pulse per pass
   byte r;
   if(currentBit==0) {                         //Check for byte end/first byte
@@ -1525,7 +1618,7 @@ void writeData() {
   }
 }
 
-void writeHeader() {
+static void writeHeader() {
   //Convert byte from HDR Vector String into string of pulses and calculate checksum. One pulse per pass
   if(currentBit==0) {                         //Check for byte end/new byte
     if(hdrptr==19) {              // If we've reached end of header block send checksum byte
@@ -1814,7 +1907,7 @@ void wave(bool bBuffer, unsigned int nBufferLen, unsigned long nBufferPeriodUs) 
 #endif // __ZX_TAPE__
 }
 
-int ReadByte(unsigned long pos) {
+static int ReadByte(unsigned long pos) {
   //Read a byte from the file, and move file position on one if successful
   byte out[1];
   int i=0;
@@ -1827,7 +1920,7 @@ int ReadByte(unsigned long pos) {
   return i;
 }
 
-int ReadWord(unsigned long pos) {
+static int ReadWord(unsigned long pos) {
   //Read 2 bytes from the file, and move file position on two if successful
   byte out[2];
   int i=0;
@@ -1840,7 +1933,7 @@ int ReadWord(unsigned long pos) {
   return i;
 }
 
-int ReadLong(unsigned long pos) {
+static int ReadLong(unsigned long pos) {
   //Read 3 bytes from the file, and move file position on three if successful
   byte out[3];
   int i=0;
@@ -1854,7 +1947,7 @@ int ReadLong(unsigned long pos) {
   return i;
 }
 
-int ReadDword(unsigned long pos) {
+static int ReadDword(unsigned long pos) {
   //Read 4 bytes from the file, and move file position on four if successful
   byte out[4];
   int i=0;
@@ -1868,7 +1961,7 @@ int ReadDword(unsigned long pos) {
   return i;
 }
 
-void ReadTZXHeader() {
+static void ReadTZXHeader() {
   //Read and check first 10 bytes for a TZX header
   char tzxHeader[11];
   int i=0;
@@ -1890,7 +1983,7 @@ void ReadTZXHeader() {
   bytesRead = 10;
 }
 
-void ReadAYHeader() {
+static void ReadAYHeader() {
   //Read and check first 8 bytes for a TZX header
   char ayHeader[9];
   int i=0;
@@ -1913,7 +2006,7 @@ void ReadAYHeader() {
 }
 
 
-void writeSampleData() {
+static void writeSampleData() {
   //Convert byte from file into string of pulses.  One pulse per pass
   byte r;
   ID15switch = 1;

@@ -76,13 +76,23 @@
 #endif
 
 
-
+#ifdef __ZX_TAPE__
+extern const char TZXTape[];
+extern const char TAPcheck[];
+extern const char ZX81Filename[];
+extern const char AYFile[]; // added additional AY file header check
+extern const char TAPHdr[]; //
+//extern const char TAPHdr[];
+extern const char UEFFile[];
+#else
 PROGMEM const char TZXTape[7] = {'Z','X','T','a','p','e','!'};
 PROGMEM const char TAPcheck[7] = {'T','A','P','t','a','p','.'};
 PROGMEM const char ZX81Filename[9] = {'T','Z','X','D','U','I','N','O',0x9D};
 PROGMEM const char AYFile[8] = {'Z','X','A','Y','E','M','U','L'}; // added additional AY file header check
 PROGMEM const char TAPHdr[20] = {0x0,0x0,0x3,'Z','X','A','Y','F','i','l','e',' ',' ',0x1A,0xB,0x0,0xC0,0x0,0x80,0x6E}; //
 //const char TAPHdr[24] = {0x13,0x0,0x0,0x3,' ',' ',' ',' ',' ',' ',' ',' ',' ',' ',0x1A,0xB,0x0,0xC0,0x0,0x80,0x52,0x1C,0xB,0xFF};
+PROGMEM const char UEFFile[9] = {'U','E','F',' ','F','i','l','e','!'};
+#endif
 
 //TZX block list - uncomment as supported
 #define ID10                0x10    //Standard speed data block
@@ -91,7 +101,7 @@ PROGMEM const char TAPHdr[20] = {0x0,0x0,0x3,'Z','X','A','Y','F','i','l','e',' '
 #define ID13                0x13    //Sequence of pulses of various lengths
 #define ID14                0x14    //Pure data block
 #define ID15                0x15    //Direct recording block -- TBD - curious to load OTLA files using direct recording (22KHz)
-//#define ID18                0x18    //CSW recording block
+#define ID18                0x18    //CSW recording block
 #define ID19                0x19    //Generalized data block
 #define ID20                0x20    //Pause (silence) ot 'Stop the tape' command
 #define ID21                0x21    //Group start
@@ -119,7 +129,7 @@ PROGMEM const char TAPHdr[20] = {0x0,0x0,0x3,'Z','X','A','Y','F','i','l','e',' '
 #define TAP                 0xFE    //Tap File Mode
 #define EOF                 0xFF    //End of file
 
-PROGMEM const char UEFFile[9] = {'U','E','F',' ','F','i','l','e','!'};
+
 #define UEF                 0xFA    //UEF file
 // UEF chunks
 #define ID0000              0x0000
@@ -219,6 +229,8 @@ PROGMEM const char UEFFile[9] = {'U','E','F',' ','F','i','l','e','!'};
 // AY Header offset start
 #define HDRSTART              0
 
+#ifndef __ZX_TAPE__
+
 //Keep track of which ID, Task, and Block Task we're dealing with
 byte currentID = 0;
 byte currentTask = 0;
@@ -228,11 +240,7 @@ byte currentBlockTask = 0;
 word currentPeriod=1;
 
 //ISR Variables
-#ifdef __ZX_TAPE__
-volatile unsigned int pos = 0;
-#else
 volatile byte pos = 0;
-#endif // __ZX_TAPE__
 volatile word wbuffer[buffsize+1][2];
 volatile byte morebuff = HIGH;
 volatile byte workingBuffer=0;
@@ -247,11 +255,7 @@ byte AYPASS = 0;
 byte hdrptr = 0;
 byte blkchksum = 0;
 word ayblklen = 0;
-#ifdef __ZX_TAPE__
-unsigned int btemppos = 0;
-#else
 byte btemppos = 0;
-#endif // __ZX_TAPE__
 byte copybuff = LOW;
 unsigned long bytesRead=0;
 unsigned long bytesToRead=0;
@@ -310,6 +314,8 @@ byte ID15switch = 0;
 byte wibble = 1;
 byte parity = 0 ;        //0:NoParity 1:ParityOdd 2:ParityEven (default:0)
 byte bitChecksum = 0;     // 0:Even 1:Odd number of one bits
+
+#endif // !__ZX_TAPE__
 
 // Oric parameters
 #define ORICZEROPULSE     416

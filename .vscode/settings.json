@@ -26,7 +26,10 @@
     "limits": "cpp",
     "locale": "cpp",
     "ratio": "cpp",
-    "vector": "cpp"
+    "vector": "cpp",
+    "__locale": "c",
+    "string": "c",
+    "string_view": "c"
   },
   "cmake.useCMakePresets": "always",
   "cmake.options.statusBarVisibility": "visible",

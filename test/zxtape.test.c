@@ -43,9 +43,9 @@ int main(int argc, char* argv[]) {
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/Back2Skool/BackToSkool.tzx");
-  // zxtape_loadFile(pZxTape,
-  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
-  //                 "ZX\ Spectrum/Games/Arkanoid2/Arkanoid2-48K.tzx");
+  zxtape_loadFile(pZxTape,
+                  "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+                  "ZX\ Spectrum/Games/Arkanoid2/Arkanoid2-48K.tzx");
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/Cobra/Cobra.tzx");
@@ -61,6 +61,9 @@ int main(int argc, char* argv[]) {
   //                 "ZX\ Spectrum/Games/MoonCresta/MoonCresta.tzx");
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/NewZealandStory/New\ Zealand\ Story\[Speedlock\ 4\].tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/NewZealandStory/New\ Zealand\ Story\[Speedlock\ 7\].tzx");
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
@@ -68,12 +71,24 @@ int main(int argc, char* argv[]) {
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/Saboteur/Saboteur.tzx");
-  zxtape_loadFile(pZxTape,
-                  "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
-                  "ZX\ Spectrum/Games/Uridium/Uridium.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/Uridium/Uridium.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/RainbowIslands/rainbowislands.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/Stormbringer\ 128k/Stormbringer\ -\ 128k.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/BlackArrow.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/BlackTiger2.tzx");
 
   // Play the ZXTape instance
-  zxtape_playPause(pZxTape);
+  // zxtape_playPause(pZxTape);
 
   // Wait for the user to press a key
   printf("Press Esc key to stop the tape\n");

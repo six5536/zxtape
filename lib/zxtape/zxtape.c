@@ -6,6 +6,7 @@
 #include "./file/zxtape_file_api_buffer.h"
 #include "./file/zxtape_file_api_dummy.h"
 #include "./file/zxtape_file_api_file.h"
+#include "./info/zxtape_info.h"
 #include "./tzx_compat/tzx_compat.h"
 
 // Maximum length for long filename support (ideally as large as possible to support very long filenames)
@@ -216,6 +217,9 @@ void zxtape_loadBuffer(ZXTAPE_HANDLE_T *pInstance, const char *pFilename, const 
   zxtapeFileApiDummy_initialize(&TZX_dir);
   zxtapeFileApiBuffer_initialize(&TZX_entry, pTapeBuffer, nTapeBufferLen);
 
+  // Analyse the file
+  zxtapeInfo_loadInfo();
+
   // TODO - check if the file is a valid TAP/TZX file
   // (NOTE, is it possible to check TAP files for validity?)
 
@@ -247,6 +251,9 @@ bool zxtape_loadFile(ZXTAPE_HANDLE_T *pInstance, const char *pFilename) {
     zxtape_log_error("Failed to open file: %s", pFilename);
     return false;
   }
+
+  // Analyse the file
+  zxtapeInfo_loadInfo();
 
   // TODO - check if the file is a valid TAP/TZX file
   // (NOTE, is it possible to check TAP files for validity?)
