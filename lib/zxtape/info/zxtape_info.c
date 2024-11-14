@@ -8,28 +8,28 @@
 #define STANDARD_STRING_BUFFER_LENGTH 256  // 255 + 1 for the terminator
 
 /* Forward declarations */
-static bool processTZX(unsigned long *pos);
-static bool processTAP(unsigned long *pos);
-static bool processStandardSpeedDataBlock(unsigned long *pos, bool isTzx);
-static bool processTurboSpeedDataBlock(unsigned long *pos);
-static bool processPureToneBlock(unsigned long *pos);
-static bool processPulseSequenceBlock(unsigned long *pos);
-static bool processPureDataBlock(unsigned long *pos);
-static bool processDirectRecordingBlock(unsigned long *pos);
-static bool processGeneralizedDataBlock(unsigned long *pos);
-static bool processPauseOrStopBlock(unsigned long *pos);
-static bool processGroupStartBlock(unsigned long *pos);
-static bool processGroupEndBlock(unsigned long *pos);
-static bool processLoopStartBlock(unsigned long *pos);
-static bool processLoopEndBlock(unsigned long *pos);
-static bool processStopTape48KBlock(unsigned long *pos);
-static bool processSetSignalLevelBlock(unsigned long *pos);
-static bool processTextDescriptionBlock(unsigned long *pos);
-static bool processMessageBlock(unsigned long *pos);
-static bool processArchiveInfoBlock(unsigned long *pos);
-static bool processHardwareTypeBlock(unsigned long *pos);
-static bool processCustomInfoBlock(unsigned long *pos);
-static bool readHeader(unsigned long *pos, ZX_TAPE_FILETYPE_T *pFileType);
+static bool processTZX(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processTAP(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processStandardSpeedDataBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo, bool isTzx, bool *pIsProgramHeader);
+static bool processTurboSpeedDataBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processPureToneBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processPulseSequenceBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processPureDataBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processDirectRecordingBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processGeneralizedDataBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processPauseOrStopBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo, bool *pIsStopTape);
+static bool processGroupStartBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processGroupEndBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processLoopStartBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processLoopEndBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processStopTape48KBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processSetSignalLevelBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processTextDescriptionBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processMessageBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processArchiveInfoBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processHardwareTypeBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool processCustomInfoBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo);
+static bool readHeader(unsigned long *pos, ZXTAPE_FILETYPE_T *pFileType);
 static bool checkForTap(char *filename);
 static bool readByte(unsigned long *pos, byte *pValue);
 static bool readBytes(unsigned long *pos, byte *pBuffer, unsigned long length);
@@ -39,16 +39,33 @@ static bool readDword(unsigned long *pos, unsigned long *pValue);
 static bool readString(unsigned long *pos, char *pBuffer, unsigned long length, bool bTrimStart, bool bTrimEnd);
 static void printBlockInfo(unsigned int blockIndex, byte id, unsigned long start, unsigned long length,
                            const char *pExtraInfo);
+static void createTapeSectionIfRequired(ZXTAPE_INFO_T *pInfo, byte id, unsigned int offset, unsigned int length,
+                                        char *pName, unsigned int nameLength, bool force);
+static void createTapeSectionInfo(ZXTAPE_INFO_T *pInfo, byte id, unsigned int offset);
+static void destroyTapeSectionInfos(ZXTAPE_INFO_T *pInfo);
+static void stripNonPlayableSectionInfos(ZXTAPE_INFO_T *pInfo);
 
 /* Imported variables */
 extern const char TZXTape[];
 
 /* Local variables */
-static char m_pProgNameBuffer[PROGNAME_LENGTH];
-static char m_pStringBuffer[STANDARD_STRING_BUFFER_LENGTH];
+static char m_pNameBuffer[STANDARD_STRING_BUFFER_LENGTH];
+static ZXTAPE_INFO_T m_info;
 
-int zxtapeInfo_loadInfo() {
-  ZX_TAPE_FILETYPE_T fileType;
+int zxtapeInfo_loadInfo(ZXTAPE_INFO_T **ppInfo) {
+  bool result = false;
+  ZXTAPE_FILETYPE_T fileType;
+
+  // Initialize the info structure
+  *ppInfo = &m_info;
+  ZXTAPE_INFO_T *pInfo = *ppInfo;
+  pInfo->filetype = ZXTAPE_FILETYPE_UNKNOWN;
+  pInfo->sectionCount = 0;
+  pInfo->blockCount = 0;
+  destroyTapeSectionInfos(pInfo);
+
+  // Clear the name buffer
+  memset(m_pNameBuffer, 0, sizeof(m_pNameBuffer));
 
   // Load the info from the tape file / buffer
   TZX_entry.close();
@@ -56,27 +73,61 @@ int zxtapeInfo_loadInfo() {
   unsigned long pos = 0;
 
   // Read the file header
-  readHeader(&pos, &fileType);
+  readHeader(&pos, &pInfo->filetype);
 
   // Process the file
-  if (fileType == TZX_FILETYPE_TZX) {
+  if (pInfo->filetype == ZXTAPE_FILETYPE_TZX) {
     // Process the TZX file
-    processTZX(&pos);
-  } else if (fileType == TZX_FILETYPE_TAP) {
+    result = processTZX(&pos, pInfo);
+  } else if (pInfo->filetype == ZXTAPE_FILETYPE_TAP) {
     // Process the TAP file
-    processTAP(&pos);
+    result = processTAP(&pos, pInfo);
   } else {
     // Unknown file type
+    result = false;
+  }
+
+  // Strip out sections without any playable blocks
+  stripNonPlayableSectionInfos(pInfo);
+
+  if (!result) {
+    pInfo->filetype = ZXTAPE_FILETYPE_UNKNOWN;
+    pInfo->sectionCount = 0;
+    pInfo->blockCount = 0;
     return -1;
   }
 
   return 0;
 }
 
-static bool processTZX(unsigned long *pos) {
-  bool success = false;
-  unsigned int blockIndex = 0;
+void zxtapeInfo_printInfo(ZXTAPE_INFO_T *pInfo) {
+  zxtape_log_debug("====== Tape Info ======");
+  zxtape_log_debug("Filetype: %u", pInfo->filetype);
+  zxtape_log_debug("Section Count: %u", pInfo->sectionCount);
+  zxtape_log_debug("Block Count: %u", pInfo->blockCount);
+  ZXTAPE_SECTION_INFO_T *pSection = pInfo->pSections;
+  while (pSection != NULL) {
+    zxtape_log_debug("-- Section %02u --", pSection->index);
+    zxtape_log_debug("Id: %02x", pSection->id);
+    zxtape_log_debug("Start Block Index: %u", pSection->blockIndex);
+    zxtape_log_debug("Block Count: %u", pSection->blockCount);
+    zxtape_log_debug("Playable Block Count: %u", pSection->playableBlockCount);
+    zxtape_log_debug("Name: %s", pSection->pName);
+    zxtape_log_debug("Program Header: %u", pSection->hasProgramHeader);
+    zxtape_log_debug("Group: %u", pSection->hasGroup);
+    zxtape_log_debug("Description: %u", pSection->hasDescription);
+    zxtape_log_debug("Stop Tape: %u", pSection->hasStopTape);
+    zxtape_log_debug("Stop Tape (48K): %u", pSection->hasStopTape48K);
+    zxtape_log_debug("Offset/Length: %u,%u", pSection->offset, pSection->length);
+    pSection = pSection->pNext;
+  }
+
+  zxtape_log_debug("==== End Tape Info ====");
+}
+
+static bool processTZX(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   unsigned long startBlockPos = *pos;
+  pInfo->blockCount = 0;
 
   zxtape_log_debug("======= TZX Info ======");
 
@@ -89,6 +140,12 @@ static bool processTZX(unsigned long *pos) {
     byte byteValue = 0;
     word wordValue = 0;
     unsigned long dwordValue = 0;
+    bool isPlayableBlock = false;
+    bool isProgramHeader = false;
+    bool isGroup = false;
+    bool isDescription = false;
+    bool isStopTape = false;
+    bool isStopTape48K = false;
     startBlockPos = *pos;
 
     if (!readByte(pos, &id)) return false;
@@ -96,97 +153,107 @@ static bool processTZX(unsigned long *pos) {
     switch (id) {
       // Standard Speed Data Block
       case ID10:
-        if (!processStandardSpeedDataBlock(pos, true)) return false;
+        if (!processStandardSpeedDataBlock(pos, pInfo, true, &isProgramHeader)) return false;
+        isPlayableBlock = true;
         break;
 
       // Turbo Speed Data Block
       case ID11:
-        if (!processTurboSpeedDataBlock(pos)) return false;
+        if (!processTurboSpeedDataBlock(pos, pInfo)) return false;
+        isPlayableBlock = true;
         break;
 
       // Pure Tone
       case ID12:
-        if (!processPureToneBlock(pos)) return false;
+        if (!processPureToneBlock(pos, pInfo)) return false;
+        isPlayableBlock = true;
         break;
 
       // Pulse sequence
       case ID13:
-        if (!processPulseSequenceBlock(pos)) return false;
+        if (!processPulseSequenceBlock(pos, pInfo)) return false;
+        isPlayableBlock = true;
         break;
 
       // Pure Data Block
       case ID14:
-        if (!processPureDataBlock(pos)) return false;
+        if (!processPureDataBlock(pos, pInfo)) return false;
+        isPlayableBlock = true;
         break;
 
       // Direct Recording
       case ID15:
-        if (!processDirectRecordingBlock(pos)) return false;
+        if (!processDirectRecordingBlock(pos, pInfo)) return false;
+        isPlayableBlock = true;
         break;
 
       // Generalized Data Block
       case ID19:
-        if (!processGeneralizedDataBlock(pos)) return false;
+        if (!processGeneralizedDataBlock(pos, pInfo)) return false;
+        isPlayableBlock = true;
         break;
 
       // Pause (silence) or 'Stop the Tape' command
       case ID20:
-        if (!processPauseOrStopBlock(pos)) return false;
+        if (!processPauseOrStopBlock(pos, pInfo, &isStopTape)) return false;
         break;
 
       // Group start
       case ID21:
-        if (!processGroupStartBlock(pos)) return false;
+        if (!processGroupStartBlock(pos, pInfo)) return false;
+        isGroup = true;
         break;
 
       // Group end
       case ID22:
-        if (!processGroupEndBlock(pos)) return false;
+        if (!processGroupEndBlock(pos, pInfo)) return false;
         break;
 
       // Loop start
       case ID24:
-        if (!processLoopStartBlock(pos)) return false;
+        if (!processLoopStartBlock(pos, pInfo)) return false;
         break;
 
       // Loop end
       case ID25:
-        if (!processLoopEndBlock(pos)) return false;
+        if (!processLoopEndBlock(pos, pInfo)) return false;
         break;
 
       // Stop the tape if in 48K mode
       case ID2A:
-        if (!processStopTape48KBlock(pos)) return false;
+        if (!processStopTape48KBlock(pos, pInfo)) return false;
+        isStopTape48K = true;
         break;
 
       // Set signal level
       case ID2B:
-        if (!processSetSignalLevelBlock(pos)) return false;
+        if (!processSetSignalLevelBlock(pos, pInfo)) return false;
         break;
 
       // Text description
       case ID30:
-        if (!processTextDescriptionBlock(pos)) return false;
+        if (!processTextDescriptionBlock(pos, pInfo)) return false;
+        isDescription = true;
         break;
 
       // Message block
       case ID31:
-        if (!processMessageBlock(pos)) return false;
+        if (!processMessageBlock(pos, pInfo)) return false;
         break;
 
       // Archive info
       case ID32:
-        if (!processArchiveInfoBlock(pos)) return false;
+        if (!processArchiveInfoBlock(pos, pInfo)) return false;
         break;
 
       // Hardware type
       case ID33:
-        if (!processHardwareTypeBlock(pos)) return false;
+        if (!processHardwareTypeBlock(pos, pInfo)) return false;
         break;
 
       // Custom info block
       case ID35:
-        if (!processCustomInfoBlock(pos)) return false;
+        if (!processCustomInfoBlock(pos, pInfo)) return false;
         break;
 
       // Kansas City Block (MSX specific implementation only)
@@ -215,22 +282,39 @@ static bool processTZX(unsigned long *pos) {
         break;
     }
 
-    printBlockInfo(blockIndex, id, startBlockPos, *pos - startBlockPos, NULL);
+    unsigned int length = *pos - startBlockPos;
 
-    blockIndex++;
+    // Section Info
+    bool hasStopTape = pInfo->pCurrentSection ? pInfo->pCurrentSection->hasStopTape : false;
+    bool hasStopTape48K = pInfo->pCurrentSection ? pInfo->pCurrentSection->hasStopTape48K : false;
+    createTapeSectionIfRequired(pInfo, id, startBlockPos, 0, m_pNameBuffer, STANDARD_STRING_BUFFER_LENGTH,
+                                isGroup || isDescription || hasStopTape || hasStopTape48K);
+    if (isProgramHeader) pInfo->pCurrentSection->hasProgramHeader = true;
+    if (isGroup) pInfo->pCurrentSection->hasGroup = true;
+    if (isDescription) pInfo->pCurrentSection->hasDescription = true;
+    if (isStopTape) pInfo->pCurrentSection->hasStopTape = true;
+    if (isStopTape48K) pInfo->pCurrentSection->hasStopTape48K = true;
+    if (isPlayableBlock) pInfo->pCurrentSection->playableBlockCount++;
+    pInfo->pCurrentSection->length += length;
+    pInfo->pCurrentSection->blockCount++;
+
+    // Debug
+    printBlockInfo(pInfo->blockCount, id, startBlockPos, length, NULL);
+
+    // Info
+    pInfo->blockCount++;
   }
 
   zxtape_log_debug("Filesize: %u, TZX data size: %u", TZX_filesize, *pos);
 
   zxtape_log_debug("==== End TZX Info ====");
 
-  return success;
+  return true;
 }
 
-static bool processTAP(unsigned long *pos) {
-  bool success = false;
-  unsigned int blockIndex = 0;
+static bool processTAP(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   unsigned long startBlockPos = *pos;
+  pInfo->blockCount = 0;
 
   zxtape_log_debug("======= TAP Info ======");
 
@@ -238,23 +322,36 @@ static bool processTAP(unsigned long *pos) {
   while (1) {
     if (*pos >= TZX_filesize) break;
 
+    bool isProgramHeader = false;
     startBlockPos = *pos;
 
-    if (!processStandardSpeedDataBlock(pos, false)) return false;
+    if (!processStandardSpeedDataBlock(pos, pInfo, false, &isProgramHeader)) return false;
 
-    printBlockInfo(blockIndex, ID10, startBlockPos, *pos - startBlockPos, NULL);
+    unsigned int length = *pos - startBlockPos;
 
-    blockIndex++;
+    // Section Info
+    createTapeSectionIfRequired(pInfo, ID10, startBlockPos, length, m_pNameBuffer, STANDARD_STRING_BUFFER_LENGTH,
+                                false);
+    if (isProgramHeader) pInfo->pCurrentSection->hasProgramHeader = true;
+    pInfo->pCurrentSection->playableBlockCount++;
+    pInfo->pCurrentSection->length += length;
+    pInfo->pCurrentSection->blockCount++;
+
+    // Debug
+    printBlockInfo(pInfo->blockCount, ID10, startBlockPos, length, NULL);
+
+    // Info
+    pInfo->blockCount++;
   }
 
   zxtape_log_debug("Filesize: %u, TZX data size: %u", TZX_filesize, *pos);
 
   zxtape_log_debug("==== End TAP Info ====");
 
-  return success;
+  return true;
 }
 
-static bool readHeader(unsigned long *pos, ZX_TAPE_FILETYPE_T *pFileType) {
+static bool readHeader(unsigned long *pos, ZXTAPE_FILETYPE_T *pFileType) {
   char tzxHeader[11];
 
   TZX_entry.seekSet(0);
@@ -264,9 +361,9 @@ static bool readHeader(unsigned long *pos, ZX_TAPE_FILETYPE_T *pFileType) {
     // If not a TZX file, check for TAP file
     bool isTap = checkForTap(TZX_fileName);
     if (isTap) {
-      *pFileType = TZX_FILETYPE_TAP;
+      *pFileType = ZXTAPE_FILETYPE_TAP;
     } else {
-      *pFileType = TZX_FILETYPE_UNKNOWN;
+      *pFileType = ZXTAPE_FILETYPE_UNKNOWN;
     }
     *pos = 0;
     TZX_entry.seekSet(0);
@@ -274,7 +371,7 @@ static bool readHeader(unsigned long *pos, ZX_TAPE_FILETYPE_T *pFileType) {
   }
 
   // Get the file type from the tape file / buffer
-  *pFileType = TZX_FILETYPE_TZX;
+  *pFileType = ZXTAPE_FILETYPE_TZX;
   *pos = i;
 
   TZX_entry.seekSet(i);
@@ -291,10 +388,13 @@ static bool checkForTap(char *filename) {
   return false;
 }
 
-static bool processStandardSpeedDataBlock(unsigned long *pos, bool isTzx) {
+static bool processStandardSpeedDataBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo, bool isTzx,
+                                          bool *pIsProgramHeader) {
   word pause = 0;
   word length = 0;
   word wordData = 0;
+  char pNameBuffer[PROGNAME_LENGTH];
+  *pIsProgramHeader = false;
 
   // Pause after this block (ms.) {1000}
   if (isTzx) {
@@ -310,8 +410,15 @@ static bool processStandardSpeedDataBlock(unsigned long *pos, bool isTzx) {
     if (!readWord(pos, &wordData)) return false;
     if (wordData == 0) {
       // Probably a standard program header, extract the program name
-      if (!readString(pos, m_pProgNameBuffer, PROGNAME_LENGTH, true, true)) return false;
-      printf("Program Name: %s\n", m_pProgNameBuffer);
+      if (m_pNameBuffer[0] == 0) {
+        if (!readString(pos, m_pNameBuffer, PROGNAME_LENGTH, true, true)) return false;
+        printf("Program Name: %s\n", m_pNameBuffer);
+      } else {
+        if (!readString(pos, pNameBuffer, PROGNAME_LENGTH, true, true)) return false;
+        printf("Program Name: %s\n", pNameBuffer);
+      }
+
+      *pIsProgramHeader = true;
     }
   }
 
@@ -321,7 +428,7 @@ static bool processStandardSpeedDataBlock(unsigned long *pos, bool isTzx) {
   return true;
 }
 
-static bool processTurboSpeedDataBlock(unsigned long *pos) {
+static bool processTurboSpeedDataBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   word pilotPulse = 0;
   word sync1Pulse = 0;
   word sync2Pulse = 0;
@@ -366,7 +473,7 @@ static bool processTurboSpeedDataBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processPureToneBlock(unsigned long *pos) {
+static bool processPureToneBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   word pulseLength = 0;
   word pulseCount = 0;
 
@@ -378,7 +485,7 @@ static bool processPureToneBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processPulseSequenceBlock(unsigned long *pos) {
+static bool processPulseSequenceBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   byte pulseCount = 0;
 
   // Number of pulses
@@ -391,7 +498,7 @@ static bool processPulseSequenceBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processPureDataBlock(unsigned long *pos) {
+static bool processPureDataBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   word zeroPulse = 0;
   word onePulse = 0;
   byte usedBits = 0;
@@ -424,7 +531,7 @@ static bool processPureDataBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processDirectRecordingBlock(unsigned long *pos) {
+static bool processDirectRecordingBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   word tStatesPerSample = 0;
   word pause = 0;
   byte usedBits = 0;
@@ -453,7 +560,7 @@ static bool processDirectRecordingBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processGeneralizedDataBlock(unsigned long *pos) {
+static bool processGeneralizedDataBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   unsigned long length = 0;
 
   // Block length (without these four bytes)
@@ -472,16 +579,18 @@ static bool processGeneralizedDataBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processPauseOrStopBlock(unsigned long *pos) {
+static bool processPauseOrStopBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo, bool *pIsStopTape) {
   word pause = 0;
 
   // Pause duration (ms.)
   if (!readWord(pos, &pause)) return false;
 
+  *pIsStopTape = pause == 0;
+
   return true;
 }
 
-static bool processGroupStartBlock(unsigned long *pos) {
+static bool processGroupStartBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   byte length = 0;
 
   // Length of the group name string
@@ -489,8 +598,8 @@ static bool processGroupStartBlock(unsigned long *pos) {
   unsigned long end = *pos + length;
 
   // Process data
-  if (!readString(pos, m_pStringBuffer, length, true, true)) return false;
-  printf("Group Name: %s\n", m_pStringBuffer);
+  if (!readString(pos, m_pNameBuffer, length, true, true)) return false;
+  printf("Group Name: %s\n", m_pNameBuffer);
 
   // Skip Remaining Data
   *pos = end;
@@ -498,12 +607,12 @@ static bool processGroupStartBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processGroupEndBlock(unsigned long *pos) {
+static bool processGroupEndBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   // No body
   return true;
 }
 
-static bool processLoopStartBlock(unsigned long *pos) {
+static bool processLoopStartBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   word repetitions = 0;
   // Number of repetitions (greater than 1)
   if (!readWord(pos, &repetitions)) return false;
@@ -511,12 +620,12 @@ static bool processLoopStartBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processLoopEndBlock(unsigned long *pos) {
+static bool processLoopEndBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   // No body
   return true;
 }
 
-static bool processStopTape48KBlock(unsigned long *pos) {
+static bool processStopTape48KBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   unsigned long length = 0;
   // Length of the block without these four bytes (0)
   if (!readDword(pos, &length)) return false;
@@ -524,7 +633,7 @@ static bool processStopTape48KBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processSetSignalLevelBlock(unsigned long *pos) {
+static bool processSetSignalLevelBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   unsigned long length = 0;
   byte signalLevel = 0;
 
@@ -536,7 +645,7 @@ static bool processSetSignalLevelBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processTextDescriptionBlock(unsigned long *pos) {
+static bool processTextDescriptionBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   byte length = 0;
 
   // Length of the text description
@@ -544,8 +653,8 @@ static bool processTextDescriptionBlock(unsigned long *pos) {
   unsigned long end = *pos + length;
 
   // Process data
-  if (!readString(pos, m_pStringBuffer, length, true, true)) return false;
-  printf("Description: %s\n", m_pStringBuffer);
+  if (!readString(pos, m_pNameBuffer, length, true, true)) return false;
+  printf("Description: %s\n", m_pNameBuffer);
 
   // Skip Remaining Data
   *pos = end;
@@ -553,7 +662,7 @@ static bool processTextDescriptionBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processMessageBlock(unsigned long *pos) {
+static bool processMessageBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   byte displayTime = 0;
   byte length = 0;
 
@@ -564,8 +673,8 @@ static bool processMessageBlock(unsigned long *pos) {
   unsigned long end = *pos + length;
 
   // Process data
-  if (!readString(pos, m_pStringBuffer, length, true, true)) return false;
-  printf("Message: %s\n", m_pStringBuffer);
+  if (!readString(pos, m_pNameBuffer, length, true, true)) return false;
+  printf("Message: %s\n", m_pNameBuffer);
 
   // Skip Remaining Data
   *pos = end;
@@ -573,7 +682,7 @@ static bool processMessageBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processArchiveInfoBlock(unsigned long *pos) {
+static bool processArchiveInfoBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   word length = 0;
 
   // Length of the whole block (without these two bytes)
@@ -594,7 +703,7 @@ static bool processArchiveInfoBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processHardwareTypeBlock(unsigned long *pos) {
+static bool processHardwareTypeBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   byte length = 0;
 
   // Number of machines and hardware types for which info is supplied
@@ -607,7 +716,7 @@ static bool processHardwareTypeBlock(unsigned long *pos) {
   return true;
 }
 
-static bool processCustomInfoBlock(unsigned long *pos) {
+static bool processCustomInfoBlock(unsigned long *pos, ZXTAPE_INFO_T *pInfo) {
   unsigned long length = 0;
 
   // Identification string (in ASCII)
@@ -781,4 +890,89 @@ static void printBlockInfo(unsigned int index, byte id, unsigned long start, uns
                            const char *pExtraInfo) {
   if (pExtraInfo == NULL) pExtraInfo = "";
   zxtape_log_debug("%03d [0x%02x]: %s [%u,%u] %s", index, id, getTzxBlockName(id), start, length, pExtraInfo);
+}
+
+static void createTapeSectionIfRequired(ZXTAPE_INFO_T *pInfo, byte id, unsigned int offset, unsigned int length,
+                                        char *pName, unsigned int nameLength, bool force) {
+  // Create a new section
+  ZXTAPE_SECTION_INFO_T *pSection = pInfo->pCurrentSection;
+  if (force || pSection == NULL) {
+    createTapeSectionInfo(pInfo, id, offset);
+    ZXTAPE_SECTION_INFO_T *pSection = pInfo->pCurrentSection;
+    if (pName != NULL) memcpy((void *)pSection->pName, pName, nameLength);
+  }
+}
+
+static void createTapeSectionInfo(ZXTAPE_INFO_T *pInfo, byte id, unsigned int offset) {
+  // Create the tape section info
+  ZXTAPE_SECTION_INFO_T *pNewSection = (ZXTAPE_SECTION_INFO_T *)malloc(sizeof(ZXTAPE_SECTION_INFO_T));
+  assert(pNewSection != NULL);
+
+  // Set the section info
+  pNewSection->id = id;
+  pNewSection->index = pInfo->sectionCount;
+  pNewSection->blockIndex = pInfo->blockCount;
+  pNewSection->blockCount = 0;
+  pNewSection->playableBlockCount = 0;
+  memset((char *)pNewSection->pName, 0, ZXTAPE_INFO_STRING_BUFFER_LENGTH);
+  pNewSection->offset = offset;
+  pNewSection->hasProgramHeader = 0;
+  pNewSection->hasGroup = 0;
+  pNewSection->hasDescription = 0;
+  pNewSection->hasStopTape = 0;
+  pNewSection->hasStopTape48K = 0;
+  pNewSection->pNext = 0;
+
+  // Add the section to the list
+  ZXTAPE_SECTION_INFO_T *pSection = pInfo->pSections;
+  while (pSection != 0) {
+    if (pSection->pNext == 0) break;
+    pSection = pSection->pNext;
+  }
+  if (pSection == 0) {
+    pInfo->pSections = pNewSection;
+  } else {
+    pSection->pNext = pNewSection;
+  }
+  pInfo->pCurrentSection = pNewSection;
+  pInfo->sectionCount++;
+}
+
+static void destroyTapeSectionInfos(ZXTAPE_INFO_T *pInfo) {
+  // Delete the tape section info
+  ZXTAPE_SECTION_INFO_T *pSection = pInfo->pSections;
+  while (pSection != 0) {
+    ZXTAPE_SECTION_INFO_T *pNext = pSection->pNext;
+    free(pSection);
+    pSection = pNext;
+  }
+  pInfo->pSections = 0;
+  pInfo->sectionCount = 0;
+}
+
+static void stripNonPlayableSectionInfos(ZXTAPE_INFO_T *pInfo) {
+  ZXTAPE_SECTION_INFO_T *pSection = pInfo->pSections;
+  ZXTAPE_SECTION_INFO_T *pPrevSection = NULL;
+  unsigned int index = 0;
+
+  while (pSection != NULL) {
+    // Remove sections without any playable blocks
+    if (pSection->playableBlockCount == 0) {
+      ZXTAPE_SECTION_INFO_T *pSectionToDelete = pSection;
+      if (pPrevSection == NULL) {
+        pInfo->pSections = pSectionToDelete->pNext;
+      } else {
+        pPrevSection->pNext = pSectionToDelete->pNext;
+      }
+      pSection = pSectionToDelete->pNext;
+      free(pSectionToDelete);
+      pInfo->sectionCount--;
+    } else {
+      // Reindex the sections
+      pSection->index = index++;
+
+      pPrevSection = pSection;
+      pSection = pSection->pNext;
+    }
+  }
 }

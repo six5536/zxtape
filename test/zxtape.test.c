@@ -43,9 +43,9 @@ int main(int argc, char* argv[]) {
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/Back2Skool/BackToSkool.tzx");
-  zxtape_loadFile(pZxTape,
-                  "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
-                  "ZX\ Spectrum/Games/Arkanoid2/Arkanoid2-48K.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/Arkanoid2/Arkanoid2-48K.tzx");
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/Cobra/Cobra.tzx");
@@ -74,9 +74,9 @@ int main(int argc, char* argv[]) {
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/Uridium/Uridium.tzx");
-  // zxtape_loadFile(pZxTape,
-  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
-  //                 "ZX\ Spectrum/Games/RainbowIslands/rainbowislands.tzx");
+  zxtape_loadFile(pZxTape,
+                  "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+                  "ZX\ Spectrum/Games/RainbowIslands/rainbowislands.tzx");
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/Stormbringer\ 128k/Stormbringer\ -\ 128k.tzx");
@@ -86,6 +86,9 @@ int main(int argc, char* argv[]) {
   // zxtape_loadFile(pZxTape,
   //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
   //                 "ZX\ Spectrum/Games/BlackTiger2.tzx");
+  // zxtape_loadFile(pZxTape,
+  //                 "/Users/rich/Library/CloudStorage/GoogleDrive-richsewell@gmail.com/My\ Drive/Home/Documents/Games/"
+  //                 "ZX\ Spectrum/Games/Gauntlet/Gauntlet-The_Deeper_Dungeons.tzx");
 
   // Play the ZXTape instance
   // zxtape_playPause(pZxTape);

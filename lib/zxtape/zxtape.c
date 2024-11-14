@@ -218,7 +218,10 @@ void zxtape_loadBuffer(ZXTAPE_HANDLE_T *pInstance, const char *pFilename, const 
   zxtapeFileApiBuffer_initialize(&TZX_entry, pTapeBuffer, nTapeBufferLen);
 
   // Analyse the file
-  zxtapeInfo_loadInfo();
+  ZXTAPE_INFO_T *pInfo;
+  zxtapeInfo_loadInfo(&pInfo);
+
+  zxtapeInfo_printInfo(pInfo);
 
   // TODO - check if the file is a valid TAP/TZX file
   // (NOTE, is it possible to check TAP files for validity?)
@@ -253,8 +256,10 @@ bool zxtape_loadFile(ZXTAPE_HANDLE_T *pInstance, const char *pFilename) {
   }
 
   // Analyse the file
-  zxtapeInfo_loadInfo();
+  ZXTAPE_INFO_T *pInfo;
+  zxtapeInfo_loadInfo(&pInfo);
 
+  zxtapeInfo_printInfo(pInfo);
   // TODO - check if the file is a valid TAP/TZX file
   // (NOTE, is it possible to check TAP files for validity?)
 
